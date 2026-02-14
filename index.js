@@ -5,7 +5,6 @@ const app = express();
 const mongoose = require("mongoose");
 const { HoldingsModel } = require("./server/model/HoldingsModel");
 const { PositionsModel } = require("./server/model/PositionsModel");
-const { WatchlistModel } = require("./server/model/WatchlistModel");
 const { OrdersModel } = require("./server/model/OrdersModel");
 const { OrdersHistoryModel } = require("./server/model/OrdersHistoryModel");
 const authRoute = require("./server/Routes/AuthRoute");
@@ -58,18 +57,22 @@ app.post("/orders", async (req, res) => {
     await newHistory.save();
     const existingOrder = await OrdersModel.findOne({
       name: name,
-      mode: mode,
     });
     if (existingOrder) {
-      existingOrder.qty += Number(quantity);
-      existingOrder.price += newPrice;
-      await existingOrder.save();
+      if (mode === "BUY") {
+        existingOrder.qty += Number(quantity);
+        existingOrder.price += newPrice;
+        await existingOrder.save();
+      } else {
+        existingOrder.qty -= Number(quantity);
+        existingOrder.price -= newPrice;
+        await existingOrder.save();
+      }
     } else {
       const newOrder = new OrdersModel({
         name: name,
         qty: quantity,
         price: newPrice,
-        mode: mode,
       });
       await newOrder.save();
     }

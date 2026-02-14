@@ -11,10 +11,8 @@ const OrdersSchema = new Schema({
     type: Number,
     required: true,
   },
-  mode: {
-    type: String,
-    enum: ["BUY", "SELL"],
-  },
+},{
+  timestamps:true
 });
 
 module.exports = { OrdersSchema };
