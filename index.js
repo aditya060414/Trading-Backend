@@ -12,13 +12,14 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 
+
 const PORT = process.env.PORT || 3002;
 const URL = process.env.MONGO_URL;
 
 app.use(bodyParser.json());
 app.use(
   cors({
-    origin: ["http://localhost:3000", "http://localhost:3001"],
+    origin: ["http://localhost:3000"],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   }),
@@ -116,5 +117,6 @@ mongoose
   .connect(process.env.MONGO_URL)
   .then(() => console.log("MongoDB Connected"))
   .catch((err) => console.log("Mongo error:", err.message));
+
 
 app.listen(PORT, () => console.log("Server running"));

@@ -17,16 +17,23 @@ module.exports.SignUp = async (req, res, next) => {
       contact,
       createdAt,
     });
-    
+
     const token = createSecretToken(user._id);
     res.cookie("token", token, {
       httpOnly: true,
       secure: false,
       sameSite: "Lax",
     });
-    res
-      .status(201)
-      .json({ message: "User signed in successfully", success: true, user });
+    res.status(201).json({
+      message: "User signed in successfully",
+      success: true,
+      user,
+      user: {
+        id: user._id,
+        name: user.username,
+        email: user.email,
+      },
+    });
     next();
   } catch (err) {
     console.error(err);
@@ -58,14 +65,18 @@ module.exports.Login = async (req, res, next) => {
       secure: false,
       maxAge: 24 * 60 * 60 * 1000,
     });
-    res
-      .status(200)
-      .json({
-        success: true,
-        message: "User logged in successfully",
-        user: user.username,
-      });
+    res.status(200).json({
+      success: true,
+      message: "User logged in successfully",
+      user: {
+        id: user._id,
+        name: user.username,
+        email: user.email,
+      },
+    });
   } catch (err) {
     console.error(err);
   }
 };
+
+module.exports.Logout = async (req, res) => {};
