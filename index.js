@@ -12,7 +12,6 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 
-
 const PORT = process.env.PORT || 3002;
 const URL = process.env.MONGO_URL;
 
@@ -40,55 +39,68 @@ app.get("/allPositions", async (req, res) => {
 });
 
 app.post("/orders", async (req, res) => {
-  // console.log(req.body);
   const { quantity, name, price, mode } = req.body;
+
+  if (!quantity || quantity <= 0 || !name || !price || !mode) {
+    return res.status(400).json({ message: "Invalid order data" });
+  }
+
   const newPrice = price * quantity;
+
   try {
-    if (!quantity || !name || !price || !mode) {
-      return res.status(400).json({
-        message: "All fields are required",
-      });
+    const existingOrder = await OrdersModel.findOne({ name });
+
+    if (mode === "SELL") {
+      if (!existingOrder || existingOrder.qty < quantity) {
+        return res.status(400).json({
+          message: "Insufficient holdings to sell",
+        });
+      }
     }
+
     const newHistory = new OrdersHistoryModel({
-      name: name,
+      name,
       qty: quantity,
       price: newPrice,
-      mode: mode,
+      mode,
     });
     await newHistory.save();
-    const existingOrder = await OrdersModel.findOne({
-      name: name,
-    });
-    if (existingOrder) {
-      if (mode === "BUY") {
-        existingOrder.qty += Number(quantity);
+
+    if (mode === "BUY") {
+      if (existingOrder) {
+        existingOrder.qty += quantity;
         existingOrder.price += newPrice;
         await existingOrder.save();
       } else {
-        existingOrder.qty -= Number(quantity);
-        existingOrder.price -= newPrice;
+        await OrdersModel.create({
+          name,
+          qty: quantity,
+          price: newPrice,
+        });
+      }
+    }
+
+    if (mode === "SELL") {
+      existingOrder.qty -= quantity;
+      existingOrder.price -= newPrice;
+
+      if (existingOrder.qty === 0) {
+        await OrdersModel.deleteOne({ name });
+      } else {
         await existingOrder.save();
       }
-    } else {
-      const newOrder = new OrdersModel({
-        name: name,
-        qty: quantity,
-        price: newPrice,
-      });
-      await newOrder.save();
     }
 
     res.status(201).json({
       success: true,
-      message: ":Order saved Successfully",
+      message: "Order placed successfully",
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({
-      message: "server error",
-    });
+    res.status(500).json({ message: "Server error" });
   }
 });
+
 app.get("/fetchOrders", async (req, res) => {
   try {
     const orders = await OrdersModel.find();
@@ -113,10 +125,20 @@ app.get("/orderHistory", async (req, res) => {
     });
   }
 });
+app.get("/me", (req, res) => {
+  if (!req.cookies.token) {
+    return res.json({ authenticated: false });
+  }
+
+  res.json({
+    authenticated: true,
+    user: req.user, // or decoded token
+  });
+});
+
 mongoose
   .connect(process.env.MONGO_URL)
   .then(() => console.log("MongoDB Connected"))
   .catch((err) => console.log("Mongo error:", err.message));
-
 
 app.listen(PORT, () => console.log("Server running"));

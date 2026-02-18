@@ -3,18 +3,32 @@ require("dotenv").config();
 
 const jwt = require("jsonwebtoken");
 
-module.exports.userVerification = (req, res) => {
+module.exports.userVerification = async(req, res) => {
   const token = req.cookies.token;
   if (!token) {
-    return res.json({ status: false });
+    return res.status(401).json({ message: "Not authenticated" });
   }
-  jwt.verify(token, process.env.TOKEN_KEY, async (err, data) => {
-    if (err) {
-      return res.json({ status: false });
-    } else {
-      const user = await User.findById(data.id);
-      if (user) res.json({ status: true });
-      else return res.json({ status: false });
+
+  try {
+    const decoded = jwt.verify(token, process.env.TOKEN_KEY);
+
+    const user = await User.findById(decoded.id).select("-password");
+
+    if (!user) {
+      return res.json({ authenticated: false });
     }
-  });
+
+    res.json({
+      authenticated: true,
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+      },
+    });
+  } catch (err) {
+    res.json({ authenticated: false });
+  }
 };
+
+

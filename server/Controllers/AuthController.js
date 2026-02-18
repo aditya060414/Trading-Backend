@@ -8,7 +8,7 @@ module.exports.SignUp = async (req, res, next) => {
     const existingUSer = await User.findOne({ email });
 
     if (existingUSer) {
-      return res.json({ message: "User already exists" });
+      return res.status(409).json({ message: "User already exists" });
     }
     const user = await User.create({
       username,
@@ -27,14 +27,12 @@ module.exports.SignUp = async (req, res, next) => {
     res.status(201).json({
       message: "User signed in successfully",
       success: true,
-      user,
       user: {
         id: user._id,
         name: user.username,
         email: user.email,
       },
     });
-    next();
   } catch (err) {
     console.error(err);
     res.status(500).json({
@@ -63,6 +61,7 @@ module.exports.Login = async (req, res, next) => {
       httpOnly: true,
       sameSite: "Lax",
       secure: false,
+      path:"/",
       maxAge: 24 * 60 * 60 * 1000,
     });
     res.status(200).json({
@@ -79,4 +78,16 @@ module.exports.Login = async (req, res, next) => {
   }
 };
 
-module.exports.Logout = async (req, res) => {};
+module.exports.Logout = async (req, res) => {
+  res.clearCookie("token", {
+    httpOnly: true,
+    sameSite: "Lax",
+    secure: false, 
+    path:"/",
+  });
+
+  return res.status(200).json({
+    success: true,
+    message: "Logged out successfully",
+  });
+};

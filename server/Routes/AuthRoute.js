@@ -5,6 +5,6 @@ const router = require("express").Router();
 router.post("/signUp",SignUp);
 router.post("/login",Login);
 router.get("/verify",userVerification);
-router.get("/logout",Logout);
+router.post("/logout",Logout);
 
 module.exports = router;
