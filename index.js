@@ -12,7 +12,7 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 
-const PORT = process.env.PORT || 3002;
+const PORT = process.env.PORT;
 const URL = process.env.MONGO_URL;
 
 app.use(bodyParser.json());
