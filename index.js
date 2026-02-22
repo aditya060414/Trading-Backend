@@ -7,6 +7,7 @@ const { HoldingsModel } = require("./server/model/HoldingsModel");
 const { PositionsModel } = require("./server/model/PositionsModel");
 const { OrdersModel } = require("./server/model/OrdersModel");
 const { OrdersHistoryModel } = require("./server/model/OrdersHistoryModel");
+const { WatchlistModel } = require("./server/model/WatchlistModel");
 const authRoute = require("./server/Routes/AuthRoute");
 const bodyParser = require("body-parser");
 const cors = require("cors");
@@ -136,6 +137,27 @@ app.get("/me", (req, res) => {
   });
 });
 
+app.post("/watchlist", async (req, res) => {
+  const { email, symbol, high, close } = req.body;
+
+  try {
+    const item = await WatchlistModel.create({
+      email,
+      symbol,
+      high,
+      close,
+    });
+
+    res.status(201).json(item);
+  } catch (err) {
+    if (err.code === 11000) {
+      return res.status(409).json({
+        message: "Stock already in watchlist",
+      });
+    }
+    res.status(500).json({ message: "Server error" });
+  }
+});
 mongoose
   .connect(process.env.MONGO_URL)
   .then(() => console.log("MongoDB Connected"))
