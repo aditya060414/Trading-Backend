@@ -12,7 +12,6 @@ const authRoute = require("./server/Routes/AuthRoute");
 const bodyParser = require("body-parser");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
-
 const PORT = process.env.PORT;
 const URL = process.env.MONGO_URL;
 
@@ -158,6 +157,20 @@ app.post("/watchlist", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+app.get("/watchlistData", async (req, res) => {
+  const {email} = req.query;
+  if (!email) {
+    return res.status(400).json({ message: "Email required" });
+  }
+
+  try {
+    const stocks = await WatchlistModel.find({ email }).sort({ createdAt: -1 });
+    res.json(stocks);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to load watchlist" });
+  }
+});
+
 mongoose
   .connect(process.env.MONGO_URL)
   .then(() => console.log("MongoDB Connected"))
