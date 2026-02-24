@@ -12,8 +12,8 @@ const authRoute = require("./server/Routes/AuthRoute");
 const bodyParser = require("body-parser");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
+
 const PORT = process.env.PORT;
-const URL = process.env.MONGO_URL;
 
 app.use(bodyParser.json());
 app.use(
@@ -72,13 +72,14 @@ app.post("/orders", async (req, res) => {
     if (mode === "BUY") {
       if (existingOrder) {
         existingOrder.qty += quantity;
-        existingOrder.close += newPrice;
+        existingOrder.gross += newPrice;
         await existingOrder.save();
       } else {
         await OrdersModel.create({
           symbol,
           qty: quantity,
-          close: newPrice,
+          close: close,
+          gross: newPrice,
           email,
         });
       }
@@ -86,10 +87,10 @@ app.post("/orders", async (req, res) => {
 
     if (mode === "SELL") {
       existingOrder.qty -= quantity;
-      existingOrder.close -= newPrice;
+      existingOrder.gross -= newPrice;
 
       if (existingOrder.qty === 0) {
-        await OrdersModel.deleteOne({ symbol,email });
+        await OrdersModel.deleteOne({ symbol, email });
       } else {
         await existingOrder.save();
       }
@@ -106,9 +107,9 @@ app.post("/orders", async (req, res) => {
 });
 
 app.get("/fetchOrders/:email", async (req, res) => {
-  const {email} = req.params;
+  const { email } = req.params;
   try {
-    const orders = await OrdersModel.find({email});
+    const orders = await OrdersModel.find({ email });
     res.status(200).json(orders);
   } catch (err) {
     console.error(err);
@@ -119,9 +120,9 @@ app.get("/fetchOrders/:email", async (req, res) => {
 });
 
 app.get("/orderHistory/:email", async (req, res) => {
-  const {email} = req.params;
+  const { email } = req.params;
   try {
-    const orders = await OrdersHistoryModel.find({email});
+    const orders = await OrdersHistoryModel.find({ email });
     res.status(200).json(orders);
   } catch (err) {
     console.error(err);
@@ -176,9 +177,100 @@ app.get("/watchlistData", async (req, res) => {
   }
 });
 
+app.put("/syncAllWatchlists", async (req, res) => {
+  try {
+    console.log("Bulk sync starting...");
+
+    // Get all watchlist entries
+    const watchlist = await WatchlistModel.find({}, { symbol: 1 });
+
+    if (!watchlist.length) {
+      return res.json({ message: "No watchlists found" });
+    }
+
+    //  Extract unique symbols
+    const symbols = [...new Set(watchlist.map((s) => s.symbol))];
+
+    //  Fetch latest stock data in ONE query
+    const latestStocks = await Stock.find({
+      symbol: { $in: symbols },
+    });
+
+    //  Create symbol → stock map
+    const stockMap = {};
+    latestStocks.forEach((stock) => {
+      stockMap[stock.symbol] = stock;
+    });
+
+    //  Prepare bulk operations
+    const bulkOps = latestStocks.map((stock) => ({
+      updateMany: {
+        filter: { symbol: stock.symbol },
+        update: {
+          $set: {
+            close: stock.close,
+            high: stock.high,
+            open: stock.open,
+          },
+        },
+      },
+    }));
+
+    if (bulkOps.length > 0) {
+      await WatchlistModel.bulkWrite(bulkOps);
+    }
+
+    console.log(" Bulk sync completed");
+
+    res.json({
+      success: true,
+      updatedCount: bulkOps.length,
+    });
+  } catch (err) {
+    console.error(" Bulk sync failed:", err);
+    res.status(500).json({ message: "Sync failed" });
+  }
+});
+
+app.post("/getLatestStock", async (req, res) => {
+  const { symbols } = req.body;
+  const stocks = await Stock.find({
+    symbol: { $in: symbols },
+  });
+  const priceMap = {};
+  stocks.forEach((stock) => {
+    priceMap[stock.symbol] = stock.close;
+  });
+  res.json(priceMap);
+});
+// Default DB (Main DB)
 mongoose
   .connect(process.env.MONGO_URL)
   .then(() => console.log("MongoDB Connected"))
   .catch((err) => console.log("Mongo error:", err.message));
+
+// Second DB (Stock DB)
+const stockDB = mongoose.createConnection(process.env.STOCKDB);
+
+stockDB.on("connected", () => {
+  console.log("Updated stock database connected");
+});
+
+stockDB.on("error", (err) => {
+  console.error("Stock DB error:", err.message);
+});
+
+// Define schema here
+const stockSchema = new mongoose.Schema({
+  symbol: String,
+  open: Number,
+  high: Number,
+  low: Number,
+  close: Number,
+  tradeDate: String,
+});
+
+// Create model USING stockDB
+const Stock = stockDB.model("Stock", stockSchema);
 
 app.listen(PORT, () => console.log("Server running"));

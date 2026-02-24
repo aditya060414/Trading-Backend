@@ -10,6 +10,7 @@ const OrdersSchema = new Schema(
       min: 1,
     },
     close: Number,
+    gross: Number,
   },
   {
     timestamps: true,

@@ -12,6 +12,7 @@ const userSchema = new Schema(
     username: {
       type: String,
       required: [true, "Your username is required"],
+      uppercase: true,
     },
     password: {
       type: String,
@@ -21,11 +22,11 @@ const userSchema = new Schema(
       type: Number,
       required: true,
       validate: {
-      validator: function(val) {
-        return val.toString().length === 10;
+        validator: function (val) {
+          return val.toString().length === 10;
+        },
+        message: "{VALUE} must be exactly 10 digits",
       },
-      message: '{VALUE} must be exactly 10 digits'
-    }
     },
   },
   {
