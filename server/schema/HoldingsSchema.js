@@ -1,14 +1,10 @@
 const { Schema } = require("mongoose");
 
 const HoldingsSchema = new Schema({
-  instrument: String,
+  email: { type: String, required: true },
   qty: Number,
-  avgCost: Number,
-  ltp: Number,
-  curVal: Number,
-  pnl: Number,
-  netChg: Number,
-  dayChg: Number,
+  symbol: { type: String, required: true },
+  close: Number,
 });
 
 module.exports = { HoldingsSchema };

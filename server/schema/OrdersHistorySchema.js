@@ -2,13 +2,13 @@ const { Schema } = require("mongoose");
 
 const OrdersHistorySchema = new Schema(
   {
-    name: String,
+    symbol: { type: String, required: true },
     qty: {
       type: Number,
       required: true,
       min: 1,
     },
-    price: {
+    close: {
       type: Number,
       required: true,
     },
@@ -16,6 +16,7 @@ const OrdersHistorySchema = new Schema(
       type: String,
       enum: ["BUY", "SELL"],
     },
+    email: { type: String, required: true },
   },
   {
     timestamps: true,

@@ -39,16 +39,18 @@ app.get("/allPositions", async (req, res) => {
 });
 
 app.post("/orders", async (req, res) => {
-  const { quantity, name, price, mode } = req.body;
+  const { quantity, symbol, close, mode, email } = req.body;
 
-  if (!quantity || quantity <= 0 || !name || !price || !mode) {
+  if (!quantity || quantity <= 0 || !symbol || !close || !mode) {
     return res.status(400).json({ message: "Invalid order data" });
   }
-
-  const newPrice = price * quantity;
+  if (!email) {
+    return res.status(550).json({ message: "Invalid user email" });
+  }
+  const newPrice = close * quantity;
 
   try {
-    const existingOrder = await OrdersModel.findOne({ name });
+    const existingOrder = await OrdersModel.findOne({ symbol, email });
 
     if (mode === "SELL") {
       if (!existingOrder || existingOrder.qty < quantity) {
@@ -59,33 +61,35 @@ app.post("/orders", async (req, res) => {
     }
 
     const newHistory = new OrdersHistoryModel({
-      name,
+      symbol,
       qty: quantity,
-      price: newPrice,
+      close: newPrice,
       mode,
+      email,
     });
     await newHistory.save();
 
     if (mode === "BUY") {
       if (existingOrder) {
         existingOrder.qty += quantity;
-        existingOrder.price += newPrice;
+        existingOrder.close += newPrice;
         await existingOrder.save();
       } else {
         await OrdersModel.create({
-          name,
+          symbol,
           qty: quantity,
-          price: newPrice,
+          close: newPrice,
+          email,
         });
       }
     }
 
     if (mode === "SELL") {
       existingOrder.qty -= quantity;
-      existingOrder.price -= newPrice;
+      existingOrder.close -= newPrice;
 
       if (existingOrder.qty === 0) {
-        await OrdersModel.deleteOne({ name });
+        await OrdersModel.deleteOne({ symbol,email });
       } else {
         await existingOrder.save();
       }
@@ -101,10 +105,10 @@ app.post("/orders", async (req, res) => {
   }
 });
 
-app.get("/fetchOrders", async (req, res) => {
+app.get("/fetchOrders/:email", async (req, res) => {
+  const {email} = req.params;
   try {
-    const orders = await OrdersModel.find();
-    // console.log(req.params.id);
+    const orders = await OrdersModel.find({email});
     res.status(200).json(orders);
   } catch (err) {
     console.error(err);
@@ -114,9 +118,10 @@ app.get("/fetchOrders", async (req, res) => {
   }
 });
 
-app.get("/orderHistory", async (req, res) => {
+app.get("/orderHistory/:email", async (req, res) => {
+  const {email} = req.params;
   try {
-    const orders = await OrdersHistoryModel.find();
+    const orders = await OrdersHistoryModel.find({email});
     res.status(200).json(orders);
   } catch (err) {
     console.error(err);
@@ -158,7 +163,7 @@ app.post("/watchlist", async (req, res) => {
   }
 });
 app.get("/watchlistData", async (req, res) => {
-  const {email} = req.query;
+  const { email } = req.query;
   if (!email) {
     return res.status(400).json({ message: "Email required" });
   }
