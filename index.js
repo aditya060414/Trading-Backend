@@ -8,10 +8,13 @@ const { PositionsModel } = require("./server/model/PositionsModel");
 const { OrdersModel } = require("./server/model/OrdersModel");
 const { OrdersHistoryModel } = require("./server/model/OrdersHistoryModel");
 const { WatchlistModel } = require("./server/model/WatchlistModel");
+const { FundsModel } = require("./server/model/FundsModel");
+const { FundsHistoryModel } = require("./server/model/FundsHistoryModel");
 const authRoute = require("./server/Routes/AuthRoute");
 const bodyParser = require("body-parser");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
+const { findOne } = require("./server/model/UserModel");
 
 const PORT = process.env.PORT;
 
@@ -237,11 +240,99 @@ app.post("/getLatestStock", async (req, res) => {
   const stocks = await Stock.find({
     symbol: { $in: symbols },
   });
-  const priceMap = {};
-  stocks.forEach((stock) => {
-    priceMap[stock.symbol] = stock.close;
-  });
-  res.json(priceMap);
+  const stockMap = Object.fromEntries(
+    stocks.map((stock) => [
+      stock.symbol,
+      {
+        open: stock.open,
+        high: stock.high,
+        low: stock.low,
+        close: stock.close,
+      },
+    ]),
+  );
+  res.json(stockMap);
+});
+app.post("/funds/:email", async (req, res) => {
+  const { email } = req.params;
+  const { deposit, withdraw } = req.body;
+
+  const depositAmt = Number(deposit) || 0;
+  const withdrawAmt = Number(withdraw) || 0;
+  try {
+    const user = await FundsModel.findOne({ email });
+
+    // negative amount validation
+    if (depositAmt < 0 || withdrawAmt < 0) {
+      return res.status(400).json({ message: "Amount cannot be negative" });
+    }
+    if (user) {
+      if (depositAmt > 0) {
+        user.amount += depositAmt;
+        await user.save();
+        await new FundsHistoryModel({
+          email: email,
+          transaction: "Deposit",
+          amount: depositAmt,
+        }).save();
+        return res.status(201).json({
+          message: "Money Deposited Successfully",
+        });
+      } else if (withdrawAmt > 0) {
+        if (user.amount < withdrawAmt) {
+          return res.status(400).json({
+            message: "Insufficient balance",
+          });
+        }
+        user.amount -= withdrawAmt;
+        await user.save();
+        await new FundsHistoryModel({
+          email: email,
+          transaction: "Withdraw",
+          amount: -withdrawAmt,
+        }).save();
+        return res.status(200).json({
+          message: "Transaction Successful",
+          amount: user.amount,
+        });
+      }
+    } else {
+      if (depositAmt > 0) {
+        await new FundsModel({
+          email: email,
+          amount: depositAmt,
+        }).save();
+        await new FundsHistoryModel({
+          email: email,
+          transaction: "Deposit",
+          amount: depositAmt,
+        }).save();
+        return res.status(200).json({
+          message: "Funds deposited in your account",
+        });
+      }
+      return res.status(400).json({ message: "Insufficient Balance" });
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Invalid data" });
+  }
+});
+app.get("/funds/:email", async (req, res) => {
+  const { email } = req.params;
+  const user = await FundsModel.findOne({ email });
+  if (!user) {
+    return res.status(200).json({ balance: 0 });
+  }
+  return res.status(200).json({ balance: user.amount });
+});
+app.get("/fundshistory/:email", async (req, res) => {
+  const { email } = req.params;
+  const history = await FundsHistoryModel.find({ email }).sort({ createdAt: -1 });
+  if (!history || history.length === 0) {
+    return res.status(200).json([]);
+  }
+  return res.status(200).json(history);
 });
 // Default DB (Main DB)
 mongoose
