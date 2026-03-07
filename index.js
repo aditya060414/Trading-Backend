@@ -251,6 +251,7 @@ app.post("/getLatestStock", async (req, res) => {
       },
     ]),
   );
+
   res.json(stockMap);
 });
 app.post("/funds/:email", async (req, res) => {
