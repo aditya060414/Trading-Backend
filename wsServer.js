@@ -22,7 +22,11 @@ wss.on("connection", (ws) => {
       const regex = new RegExp(`^${query}`, "i");
       const results = await Stock.aggregate([
         { $match: { symbol: regex } },
-        { $sort: { date: -1 } }, // latest first
+        {
+          $sort: {
+            tradeDate: -1,
+          },
+        }, // latest first
         {
           $group: {
             _id: "$symbol",

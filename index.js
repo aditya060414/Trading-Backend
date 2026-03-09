@@ -237,23 +237,47 @@ app.put("/syncAllWatchlists", async (req, res) => {
 
 app.post("/getLatestStock", async (req, res) => {
   const { symbols } = req.body;
-  const stocks = await Stock.find({
+  // Find latest available trading date
+
+  const dates = await Stock.aggregate([
+  { $group: { _id: "$tradeDate" } },
+  { $sort: { _id: -1 } },
+  { $limit: 2 }
+]);
+
+const latestDate = dates[0]._id;
+const prevDate = dates[1]._id;
+
+  const todayStocks = await Stock.find({
     symbol: { $in: symbols },
-  });
-  const stockMap = Object.fromEntries(
-    stocks.map((stock) => [
+    tradeDate: latestDate,
+  }).lean();
+
+   const prevStocks = await Stock.find({
+    symbol: { $in: symbols },
+    tradeDate: prevDate,
+  }).lean();
+  
+   const prevMap = Object.fromEntries(
+    prevStocks.map((s) => [s.symbol, s.close])
+  );
+
+   const stockMap = Object.fromEntries(
+    todayStocks.map((stock) => [
       stock.symbol,
       {
         open: stock.open,
         high: stock.high,
         low: stock.low,
         close: stock.close,
+        prevClose: prevMap[stock.symbol] || stock.close,
       },
-    ]),
+    ])
   );
 
   res.json(stockMap);
 });
+
 app.post("/funds/:email", async (req, res) => {
   const { email } = req.params;
   const { deposit, withdraw } = req.body;
@@ -329,12 +353,39 @@ app.get("/funds/:email", async (req, res) => {
 });
 app.get("/fundshistory/:email", async (req, res) => {
   const { email } = req.params;
-  const history = await FundsHistoryModel.find({ email }).sort({ createdAt: -1 });
+  const history = await FundsHistoryModel.find({ email }).sort({
+    createdAt: -1,
+  });
   if (!history || history.length === 0) {
     return res.status(200).json([]);
   }
   return res.status(200).json(history);
 });
+
+// delete route for watchlist
+app.delete("/watchlist", async (req, res) => {
+  try {
+    const { symbol, email } = req.body;
+    if (!email || !symbol) {
+      return res.status(400).json({ message: "Email and symbol are required" });
+    }
+    const result = await WatchlistModel.deleteOne({ symbol, email });
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ message: "Item not found in watchlist" });
+    }
+
+    res.status(200).json({
+      message: "Stock removed from watchlist",
+      result,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error deleting from watchlist",
+      error: error.message,
+    });
+  }
+});
+
 // Default DB (Main DB)
 mongoose
   .connect(process.env.MONGO_URL)
