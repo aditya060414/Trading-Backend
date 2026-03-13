@@ -240,29 +240,29 @@ app.post("/getLatestStock", async (req, res) => {
   // Find latest available trading date
 
   const dates = await Stock.aggregate([
-  { $group: { _id: "$tradeDate" } },
-  { $sort: { _id: -1 } },
-  { $limit: 2 }
-]);
+    { $group: { _id: "$tradeDate" } },
+    { $sort: { _id: -1 } },
+    { $limit: 2 },
+  ]);
 
-const latestDate = dates[0]._id;
-const prevDate = dates[1]._id;
+  const latestDate = dates[0]._id;
+  const prevDate = dates[1]._id;
 
   const todayStocks = await Stock.find({
     symbol: { $in: symbols },
     tradeDate: latestDate,
   }).lean();
 
-   const prevStocks = await Stock.find({
+  const prevStocks = await Stock.find({
     symbol: { $in: symbols },
     tradeDate: prevDate,
   }).lean();
-  
-   const prevMap = Object.fromEntries(
-    prevStocks.map((s) => [s.symbol, s.close])
+
+  const prevMap = Object.fromEntries(
+    prevStocks.map((s) => [s.symbol, s.close]),
   );
 
-   const stockMap = Object.fromEntries(
+  const stockMap = Object.fromEntries(
     todayStocks.map((stock) => [
       stock.symbol,
       {
@@ -272,7 +272,7 @@ const prevDate = dates[1]._id;
         close: stock.close,
         prevClose: prevMap[stock.symbol] || stock.close,
       },
-    ])
+    ]),
   );
 
   res.json(stockMap);
@@ -383,6 +383,97 @@ app.delete("/watchlist", async (req, res) => {
       message: "Error deleting from watchlist",
       error: error.message,
     });
+  }
+});
+
+app.get("/portfolioAnalytics/:email", async (req, res) => {
+  const { email } = req.params;
+
+  try {
+    const holdings = await OrdersModel.find({ email });
+
+    if (!holdings.length) {
+      return res.json({
+        portfolioValue: 0,
+        investedAmount: 0,
+        todaysGain: 0,
+        allocation: [],
+      });
+    }
+
+    const symbols = holdings.map((h) => h.symbol);
+
+    const dates = await Stock.aggregate([
+      { $group: { _id: "$tradeDate" } },
+      { $sort: { _id: -1 } },
+      { $limit: 2 },
+    ]);
+
+    const latestDate = dates[0]._id;
+    const prevDate = dates[1]._id;
+
+    const todayStocks = await Stock.find({
+      symbol: { $in: symbols },
+      tradeDate: latestDate,
+    });
+
+    const prevStocks = await Stock.find({
+      symbol: { $in: symbols },
+      tradeDate: prevDate,
+    });
+
+    const prevMap = Object.fromEntries(
+      prevStocks.map((s) => [s.symbol, s.close]),
+    );
+
+    let portfolioValue = 0;
+    let investedAmount = 0;
+    let todaysGain = 0;
+
+    let allocation = [];
+    let topGainer = { symbol: "", gain: -Infinity };
+
+    todayStocks.forEach((stock) => {
+      const holding = holdings.find((h) => h.symbol === stock.symbol);
+
+      if (!holding) return;
+
+      const qty = holding.qty;
+      const close = stock.close;
+      const prev = prevMap[stock.symbol] || close;
+
+      const value = qty * close;
+      const invested = holding.gross;
+      const gain = (close - prev) * qty;
+
+      portfolioValue += value;
+      investedAmount += invested;
+      todaysGain += gain;
+
+      allocation.push({
+        symbol: stock.symbol,
+        value,
+        gain,
+      });
+
+      if (gain > topGainer.gain) {
+        topGainer = {
+          symbol: stock.symbol,
+          gain,
+        };
+      }
+    });
+
+    res.json({
+      portfolioValue,
+      investedAmount,
+      todaysGain,
+      topGainer,
+      allocation,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Analytics error" });
   }
 });
 
