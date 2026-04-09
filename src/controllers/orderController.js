@@ -4,8 +4,11 @@ exports.placeOrder = async (req, res) => {
     const { quantity, symbol, close, mode, email } = req.body;
 
     // 1. Validation
-    if (!quantity || quantity <= 0 || !symbol || !close || !["BUY", "SELL"].includes(mode)) {
+    if (!quantity || quantity < 0 || !symbol || !close || !["BUY", "SELL"].includes(mode)) {
         return res.status(400).json({ success: false, message: "Invalid order data" });
+    }
+    if (!email) {
+        return res.status(400).json({ success: false, message: "Email required" })
     }
 
     try {
@@ -17,9 +20,9 @@ exports.placeOrder = async (req, res) => {
         });
     } catch (err) {
         const status = err.message === "Insufficient holdings to sell" ? 400 : 500;
-        return res.status(status).json({ 
-            success: false, 
-            message: err.message 
+        return res.status(status).json({
+            success: false,
+            message: err.message
         });
     }
 };

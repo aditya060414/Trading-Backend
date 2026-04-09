@@ -2,7 +2,7 @@
 const mongoose = require("mongoose");
 
 const OrderSchema = new mongoose.Schema(
-  {
+  [{
     email: { 
       type: String, 
       required: true, 
@@ -19,20 +19,20 @@ const OrderSchema = new mongoose.Schema(
       required: true,
       min: 0, // Can be 0 if we don't delete the document immediately
     },
-    avgPrice: { // Renamed from 'close' - important for P&L calculations
+    avgPrice: { // important for P&L calculations
       type: Number,
       required: true,
     },
-    totalInvestment: { // Renamed from 'gross'
+    totalInvestment: { 
       type: Number,
       default: 0
     },
-  },
+  }],
   { timestamps: true }
 );
 
-// VERY IMPORTANT: Ensures a user can't have two separate documents for the same stock.
-// This makes your 'findOne' and 'updateOne' logic much safer.
+// Ensures a user can't have two separate documents for the same stock.
+// This makes 'findOne' and 'updateOne' logic much safer.
 OrderSchema.index({ email: 1, symbol: 1 }, { unique: true });
 
 module.exports = { OrderSchema};

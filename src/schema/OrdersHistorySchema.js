@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const { ORDER_MODES } = require("../constants/orderConstants");
 
 const OrderHistorySchema = new mongoose.Schema(
-  {
+  [{
     email: { 
       type: String, 
       required: true, 
@@ -21,7 +21,7 @@ const OrderHistorySchema = new mongoose.Schema(
       required: true,
       min: [1, "Quantity cannot be less than 1"],
     },
-    price: { // Changed from 'close' to 'price' for clarity
+    price: { 
       type: Number,
       required: true,
       min: 0
@@ -35,7 +35,7 @@ const OrderHistorySchema = new mongoose.Schema(
       required: true,
       enum: Object.values(ORDER_MODES),
     },
-  },
+  }],
   { timestamps: true }
 );
 
