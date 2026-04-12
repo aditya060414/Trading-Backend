@@ -5,12 +5,12 @@ const morgan = require('morgan'); // Highly recommended for logging requests
 const helmet = require('helmet'); // Adds security headers
 
 // Import Routes (Keeping naming consistent)
-const authRoutes = require("./routes/AuthRoute");
-const portfolioRoutes = require("./routes/PortfolioRoute"); // Combined Holdings/Positions
-const orderRoutes = require("./routes/OrderRoute");        // Combined Orders/History
-const watchlistRoutes = require("./routes/WatchlistRoute");
-const fundRoutes = require("./routes/FundRoute");          // Combined Funds/History
-
+const authRoutes = require("./src/routes/AuthRoute");
+// const portfolioRoutes = require("./src/routes/PortfolioRoute"); // Combined Holdings/Positions
+const orderRoutes = require("./src/routes/OrderRoute");        // Combined Orders/History
+// const watchlistRoutes = require("./src/routes/WatchlistRoute");
+const fundRoutes = require("./src/routes/FundRoute");          // Combined Funds/History
+const home = require("./src/routes/Home");
 const app = express();
 
 // --- 1. Security & Global Middleware ---
@@ -30,11 +30,11 @@ app.use(cookieParser());
 // --- 2. API Routes (Versioned) ---
 // Prefixing with /api/v1 is a professional standard
 const API_PREFIX = "/api/v1";
-
+app.use('/', home);
 app.use(`${API_PREFIX}/auth`, authRoutes);
-app.use(`${API_PREFIX}/portfolio`, portfolioRoutes);
+// app.use(`${API_PREFIX}/portfolio`, portfolioRoutes);
 app.use(`${API_PREFIX}/orders`, orderRoutes);
-app.use(`${API_PREFIX}/watchlist`, watchlistRoutes);
+// app.use(`${API_PREFIX}/watchlist`, watchlistRoutes);
 app.use(`${API_PREFIX}/funds`, fundRoutes);
 
 // --- 3. Error Handling Middleware ---

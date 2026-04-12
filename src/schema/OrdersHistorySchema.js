@@ -2,8 +2,8 @@
 const mongoose = require("mongoose");
 const { ORDER_MODES } = require("../constants/orderConstants");
 
-const OrderHistorySchema = new mongoose.Schema(
-  [{
+const OrdersHistorySchema = new mongoose.Schema(
+  {
     email: { 
       type: String, 
       required: true, 
@@ -35,11 +35,11 @@ const OrderHistorySchema = new mongoose.Schema(
       required: true,
       enum: Object.values(ORDER_MODES),
     },
-  }],
+  },
   { timestamps: true }
 );
 
 // Compound index: for searching a specific stock history for a specific user
-OrderHistorySchema.index({ email: 1, symbol: 1 });
+OrdersHistorySchema.index({ email: 1, symbol: 1 });
 
-module.exports = { OrderHistorySchema };
+module.exports = { OrdersHistorySchema };

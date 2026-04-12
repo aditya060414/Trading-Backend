@@ -23,11 +23,11 @@ module.exports.SignUp = async (req, res) => {
 
     // 1. Check if user already exists
     const existingUSer = await User.findOne({ email });
-
+    
     if (existingUSer) {
       return res.status(409).json({ message: "User already exists" });
     }
-
+    
     // 2. Create User
     const user = await User.create({
       username,
@@ -35,7 +35,8 @@ module.exports.SignUp = async (req, res) => {
       password,
       contact,
     });
-
+    
+    console.log(email,password,username,contact);
     // 3. Cache the new user in Redis immediately
     const cachedData = await cacheUserSession(user);
 

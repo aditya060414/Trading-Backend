@@ -3,9 +3,8 @@ const jwt = require("jsonwebtoken");
 const redisClient = require("../config/redis")
 
 
-module.exports.userVerification = async (req, res) => {
+module.exports.userVerification = async (req, res,next) => {
   const token = req.cookies.token;
-
   if (!token) {
     return res.status(401).json({ status: false, message: "No token provided" });
   }
@@ -19,12 +18,8 @@ module.exports.userVerification = async (req, res) => {
     const cachedUser = await redisClient.get(`user:${userId}`);
 
     if (cachedUser) {
-      // If found in Redis, return it immediately! (No DB call)
-      return res.status(200).json({
-        authenticated: true,
-        user: JSON.parse(cachedUser),
-        source: "cache" // Just for debugging
-      });
+      req.user = JSON.parse(cachedUser);
+      return next();
     }
 
     // 2. If not in Redis, hit MongoDB
@@ -48,11 +43,14 @@ module.exports.userVerification = async (req, res) => {
       JSON.stringify(userData)
     );
 
-    res.status(200).json({
-      authenticated: true,
-      user: userData,
-      source: "database"
-    });
+    // res.status(200).json({
+    //   authenticated: true,
+    //   user: userData,
+    //   source: "database"
+    // });
+
+     req.user = userData;
+     next();
 
   } catch (err) {
     return res.status(401).json({ authenticated: false, message: "Invalid Token" });

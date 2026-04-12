@@ -23,3 +23,5 @@ yarn-debug.log*
 yarn-error.log*
 .env
 STRUCTURE_GUIDE.md
+toWorkOn.md
+changes.md

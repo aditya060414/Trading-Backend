@@ -1,16 +1,16 @@
 const mongoose = require('mongoose');
-const OrdersModel = require('../models/OrdersModel');
-const OrdersHistoryModel = require('../models/OrdersHistoryModel');
+const { OrdersModel } = require('../models/OrdersModel');
+const { OrdersHistoryModel } = require('../models/OrdersHistoryModel');
+const { buyStock, sellStock } = require('../controllers/fundsController');
+const redisClient = require('../config/redis');
 
-exports.processOrder = async (orderData) => {
-    const { quantity, symbol, close, mode, email } = orderData;
-    const totalPrice = quantity * close;
-
-    const session = await mongoose.startSession();
-    session.startTransaction();
+module.exports.processOrder = async (orderData) => {
+    const { quantity, symbol, close, mode, email, userId } = orderData;
+    const totalPrice = parseFloat((quantity * close).toFixed(2));
 
     try {
-        const existingOrder = await OrdersModel.findOne({ email, symbol }).session(session);
+        let wallet;
+        const existingOrder = await OrdersModel.findOne({ email, symbol });
 
         // 1. Logic Validation
         if (mode === "SELL") {
@@ -19,53 +19,62 @@ exports.processOrder = async (orderData) => {
             }
         }
 
+        if (mode === "BUY") {
+            wallet = await buyStock({ totalPrice, userId });
+        }
+        if (mode === "SELL") {
+            wallet = await sellStock({ totalPrice, userId });
+        }
+
         // 2. Log to history
-        await OrdersHistoryModel.create([{
+        await OrdersHistoryModel.create({
             symbol,
             qty: quantity,
             price: close,
             totalAmount: totalPrice,
-            mode, 
+            mode,
             email,
-        }], { session });
+        });
 
         // 3. Update holdings
         if (mode === "BUY") {
             if (existingOrder) {
-                // Update average price and quantity
                 const newQty = existingOrder.qty + quantity;
-                const newInvestment = existingOrder.totalInvestment + totalPrice;
-                
+                const newInvestment = parseFloat((existingOrder.totalInvestment + totalPrice).toFixed(2));
+
                 existingOrder.qty = newQty;
                 existingOrder.totalInvestment = newInvestment;
-                existingOrder.avgPrice = newInvestment / newQty; // Recalculate Average Price
-                await existingOrder.save({ session });
+                existingOrder.avgPrice = parseFloat((newInvestment / newQty).toFixed(2));
+                await existingOrder.save();
             } else {
-                await Order.create([{
-                    symbol, 
-                    qty: quantity, 
-                    avgPrice: close, 
-                    totalInvestment: totalPrice, 
-                    email
-                }], { session });
+                await OrdersModel.create({
+                    symbol,
+                    qty: quantity,
+                    avgPrice: close,
+                    totalInvestment: totalPrice,
+                    email,
+                    mode
+                });
             }
         } else if (mode === "SELL") {
             existingOrder.qty -= quantity;
-            existingOrder.totalInvestment -= (existingOrder.avgPrice * quantity); // Reduce investment by avg cost
+            existingOrder.totalInvestment -= parseFloat((existingOrder.avgPrice * quantity).toFixed(2));
 
             if (existingOrder.qty <= 0) {
-                await Order.deleteOne({ _id: existingOrder._id }).session(session);
+                await OrdersModel.deleteOne({ _id: existingOrder._id });
             } else {
-                await existingOrder.save({ session });
+                await existingOrder.save();
             }
         }
 
-        await session.commitTransaction();
-        return { success: true };
+        // 4. Update Cache
+        if (wallet) {
+            await redisClient.setEx(`balance:${userId}`, 3600, wallet.balance.toFixed(2));
+        }
+        await redisClient.del(`portfolio:${userId}`);
+
+        return { success: true, message: "Order processed successfully" };
     } catch (error) {
-        await session.abortTransaction();
-        throw error; 
-    } finally {
-        session.endSession();
+        return { success: false, message: "Order failed", error: error.message };
     }
-};
+};

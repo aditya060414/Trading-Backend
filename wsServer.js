@@ -1,6 +1,6 @@
 const WebSocket = require("ws");
 const mongoose = require("mongoose");
-const Stock = require("./server/model/UpdatedStocks"); // your schema
+const Stock = require("./src/models/UpdatedStocks"); // your schema
 
 mongoose.connect("mongodb://127.0.0.1:27017/nse_stocks");
 

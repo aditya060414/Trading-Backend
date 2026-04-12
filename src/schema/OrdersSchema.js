@@ -1,8 +1,9 @@
 // src/models/Order.js
 const mongoose = require("mongoose");
+const { ORDER_MODES } = require("../constants/orderConstants");
 
-const OrderSchema = new mongoose.Schema(
-  [{
+const OrdersSchema = new mongoose.Schema(
+  {
     email: { 
       type: String, 
       required: true, 
@@ -27,12 +28,17 @@ const OrderSchema = new mongoose.Schema(
       type: Number,
       default: 0
     },
-  }],
+    mode: {
+      type: String,
+      required: true,
+      enum: Object.values(ORDER_MODES),
+    },
+  },
   { timestamps: true }
 );
 
 // Ensures a user can't have two separate documents for the same stock.
 // This makes 'findOne' and 'updateOne' logic much safer.
-OrderSchema.index({ email: 1, symbol: 1 }, { unique: true });
+OrdersSchema.index({ email: 1, symbol: 1 }, { unique: true });
 
-module.exports = { OrderSchema};
+module.exports = { OrdersSchema };

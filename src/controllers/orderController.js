@@ -1,7 +1,9 @@
 const orderService = require('../services/orderServices');
 
-exports.placeOrder = async (req, res) => {
-    const { quantity, symbol, close, mode, email } = req.body;
+module.exports.placeOrder = async (req, res) => {
+    const { quantity, symbol, close, mode } = req.body;
+    const email = req.user.email;
+    const userId = req.user.id;
 
     // 1. Validation
     if (!quantity || quantity < 0 || !symbol || !close || !["BUY", "SELL"].includes(mode)) {
@@ -12,11 +14,18 @@ exports.placeOrder = async (req, res) => {
     }
 
     try {
-        const result = await orderService.processOrder(req.body);
+        const result = await orderService.processOrder({
+            quantity,
+            symbol,
+            close,
+            mode,
+            email,
+            userId
+        });
         return res.status(201).json({
             success: true,
-            message: "Order processed successfully",
-            data: result
+            message: result.message,
+            error: result.error,
         });
     } catch (err) {
         const status = err.message === "Insufficient holdings to sell" ? 400 : 500;
