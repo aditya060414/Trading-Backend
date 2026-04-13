@@ -1,3 +1,4 @@
+const { OrdersHistoryModel } = require('../models/OrdersHistoryModel');
 const orderService = require('../services/orderServices');
 
 module.exports.placeOrder = async (req, res) => {
@@ -35,3 +36,38 @@ module.exports.placeOrder = async (req, res) => {
         });
     }
 };
+
+module.exports.getUserHistory = async (req, res) => {
+    const userEmail = req.user.email;
+
+    try {
+        if (!userEmail) {
+            return res.status(400).json({
+                status: false,
+                message: "User not Logged in."
+            })
+        }
+
+        const history = await OrdersHistoryModel.find({email:userEmail});
+
+        if(!history){
+            return res.status(404).json({
+                status:false,
+                message:"No History Found."
+            })
+        }
+
+        return res.status(200).json({
+            status:true,
+            message:"History Fetched Successfully",
+            data:history
+        })
+
+    } catch (error) {
+        return res.status(500).json({
+            status:false,
+            message:"Internal Server Error."
+        })
+    }
+
+}

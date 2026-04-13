@@ -28,6 +28,7 @@ module.exports.getFunds = async (req, res) => {
     }
 }
 module.exports.addFunds = async (req, res) => {
+    let transaction;
     try {
         const userId = req.user.id;
         let { amount } = req.body;
@@ -39,7 +40,15 @@ module.exports.addFunds = async (req, res) => {
             return res.status(400).json({ message: "Invalid amount" });
         }
 
-        // 1. Atomic Update in DB
+        // 1. Log Transaction
+        transaction = await Transaction.create({
+            userId,
+            type: "ADD",
+            amount: cleanAmount,
+            status: "PENDING",
+        });
+
+        // 2. Atomic Update in DB
         // $inc works with decimals, Mongoose 'set' handles the rounding
         const wallet = await Wallet.findOneAndUpdate(
             { userId },
@@ -49,15 +58,12 @@ module.exports.addFunds = async (req, res) => {
 
         const finalBalance = wallet.balance.toFixed(2);
 
-        // 2. Log Transaction
-        await Transaction.create({
-            userId,
-            type: "ADD",
-            amount: cleanAmount,
-            balanceAfter: wallet.balance
-        });
+        // 3. Mark COMPLETED
+        transaction.status = "COMPLETED";
+        transaction.balanceAfter = wallet.balance;
+        await transaction.save();
 
-        // 3. Update Redis
+        // 4. Update Redis
         await redisClient.setEx(`balance:${userId}`, 3600, finalBalance);
 
         res.status(200).json({
@@ -65,6 +71,12 @@ module.exports.addFunds = async (req, res) => {
             newBalance: finalBalance
         });
     } catch (err) {
+        // 4. Mark FAILED
+        if (transaction) {
+            transaction.status = "FAILED";
+            transaction.reason = err.message;
+            await transaction.save();
+        }
         res.status(500).json({ message: "Transaction failed" });
     }
 }
@@ -93,6 +105,8 @@ module.exports.withdrawFunds = async (req, res) => {
     const userId = req.user.id;
     let { amount } = req.body;
 
+    let transaction;
+
     // 1. make sure the amount is fixed to 2 decimal
     const cleanAmount = parseFloat(parseFloat(amount).toFixed(2));
     if (isNaN(cleanAmount) || cleanAmount < 0) {
@@ -110,7 +124,15 @@ module.exports.withdrawFunds = async (req, res) => {
         return res.status(429).json({ message: "Another transaction is in progress. Please wait." });
     }
     try {
-        // 3. ATOMIC UPDATE: Only subtract if balance >= cleanAmount
+        // 3. Create transaction Pending
+        transaction = await Transaction.create({
+            userId,
+            type: "WITHDRAW",
+            amount: cleanAmount,
+            status: "PENDING"
+        })
+
+        // 4. ATOMIC UPDATE: Only subtract if balance >= cleanAmount
         const wallet = await Wallet.findOneAndUpdate(
             {
                 userId: userId,
@@ -120,26 +142,20 @@ module.exports.withdrawFunds = async (req, res) => {
             { new: true }
         );
 
-        // 4. Check if the update actually happened (wallet will be null if balance was insufficient)
+        // 5. Check if the update actually happened (wallet will be null if balance was insufficient)
         if (!wallet) {
-            return res.status(400).json({
-                message: "Insufficient balance or wallet not found"
-            });
+            throw new Error("Insufficient balance or wallet not found");
         }
 
 
         const finalBalance = wallet.balance.toFixed(2);
 
-        // 5. Log the Transaction (For audit trail)
-        await Transaction.create({
-            userId,
-            type: "WITHDRAW",
-            amount: cleanAmount,
-            balanceAfter: wallet.balance,
-            status: "COMPLETED"
-        });
+        // 6. Log the Transaction (For audit trail)
+        transaction.status = "COMPLETED";
+        transaction.balanceAfter = wallet.balance;
+        await transaction.save();
 
-        // 6. Update Redis Balance Cache
+        // 7. Update Redis Balance Cache
         await redisClient.setEx(`balance:${userId}`, 3600, finalBalance);
 
         res.status(200).json({
@@ -149,10 +165,29 @@ module.exports.withdrawFunds = async (req, res) => {
         });
 
     } catch (err) {
+        if (transaction) {
+            transaction.status = "FAILED";
+            transaction.reason = err.message;
+            await transaction.save();
+        }
+
+        // Handle known errors properly
+        if (err.message.includes("Insufficient")) {
+            return res.status(400).json({
+                success: false,
+                message: err.message
+            });
+        }
+
+        // Unknown error
         console.error("Withdrawal Error:", err);
-        res.status(500).json({ message: "Internal Server Error during withdrawal" });
+
+        res.status(500).json({
+            success: false,
+            message: "Internal Server Error during withdrawal"
+        });
     } finally {
-        // 7. RELEASE LOCK, so that in future user can make transactions
+        // 8. RELEASE LOCK, so that in future user can make transactions
         await redisClient.del(lockKey);
     }
 };

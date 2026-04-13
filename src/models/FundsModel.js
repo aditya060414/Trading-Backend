@@ -14,10 +14,11 @@ const transactionSchema = new Schema({
     required: true,
     set: v => parseFloat(v.toFixed(2))
   },
-  status: { type: String, enum: ["PENDING", "COMPLETED", "FAILED"], default: "COMPLETED" },
+  status: { type: String, enum: ["PENDING", "COMPLETED", "FAILED"], default: "PENDING" },
   referenceId: { type: String }, // External ID (e.g., phonepe/UPI ID)
   balanceBefore: { type: Number, set: v => parseFloat(v.toFixed(2)) },
   balanceAfter: { type: Number, set: v => parseFloat(v.toFixed(2)) },
+  reason: { type: String, default: null },
 }, { timestamps: true });
 
 // 2. Wallet Schema (For Current Balance)

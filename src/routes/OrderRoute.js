@@ -3,6 +3,7 @@ const router = express.Router();
 const orderController = require('../controllers/orderController');
 const { userVerification } = require('../middleware/AuthMiddleWare');
 
-router.post('/placeOrder',userVerification,orderController.placeOrder);
+router.post('/placeOrder', userVerification, orderController.placeOrder);
+router.get('/history', userVerification, orderController.getUserHistory)
 
 module.exports = router;

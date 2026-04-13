@@ -39,7 +39,7 @@ module.exports.userVerification = async (req, res,next) => {
 
     await redisClient.setEx(
       `user:${userId}`,
-      1800, // 1800 seconds = 30 minutes
+      86400, // 24 hours
       JSON.stringify(userData)
     );
 

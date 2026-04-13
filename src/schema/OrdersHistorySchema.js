@@ -4,24 +4,24 @@ const { ORDER_MODES } = require("../constants/orderConstants");
 
 const OrdersHistorySchema = new mongoose.Schema(
   {
-    email: { 
-      type: String, 
-      required: true, 
-      lowercase: true, 
+    email: {
+      type: String,
+      required: true,
+      lowercase: true,
       trim: true,
       index: true // Fast lookup for user history
     },
-    symbol: { 
-      type: String, 
-      required: true, 
-      uppercase: true 
+    symbol: {
+      type: String,
+      required: true,
+      uppercase: true
     },
     qty: {
       type: Number,
       required: true,
       min: [1, "Quantity cannot be less than 1"],
     },
-    price: { 
+    price: {
       type: Number,
       required: true,
       min: 0
@@ -34,6 +34,15 @@ const OrdersHistorySchema = new mongoose.Schema(
       type: String,
       required: true,
       enum: Object.values(ORDER_MODES),
+    },
+    status: {
+      type: String,
+      default:"PENDING",
+      enum: ["PENDING","COMPLETED", "FAILED"]
+    },
+    reason: {
+      type: String,
+      default: null,
     },
   },
   { timestamps: true }

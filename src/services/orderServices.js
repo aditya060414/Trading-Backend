@@ -7,12 +7,24 @@ const redisClient = require('../config/redis');
 module.exports.processOrder = async (orderData) => {
     const { quantity, symbol, close, mode, email, userId } = orderData;
     const totalPrice = parseFloat((quantity * close).toFixed(2));
+    let orderHistory;
 
     try {
         let wallet;
+        // 1. Log to history {STATUS - PENDING}
+        orderHistory = await OrdersHistoryModel.create({
+            symbol,
+            qty: quantity,
+            price: close,
+            totalAmount: totalPrice,
+            mode,
+            email,
+            status: "PENDING",
+        });
+
         const existingOrder = await OrdersModel.findOne({ email, symbol });
 
-        // 1. Logic Validation
+        // 2. Logic Validation
         if (mode === "SELL") {
             if (!existingOrder || existingOrder.qty < quantity) {
                 throw new Error("Insufficient holdings to sell");
@@ -25,16 +37,6 @@ module.exports.processOrder = async (orderData) => {
         if (mode === "SELL") {
             wallet = await sellStock({ totalPrice, userId });
         }
-
-        // 2. Log to history
-        await OrdersHistoryModel.create({
-            symbol,
-            qty: quantity,
-            price: close,
-            totalAmount: totalPrice,
-            mode,
-            email,
-        });
 
         // 3. Update holdings
         if (mode === "BUY") {
@@ -67,7 +69,11 @@ module.exports.processOrder = async (orderData) => {
             }
         }
 
-        // 4. Update Cache
+        // 4. change status
+        orderHistory.status = "COMPLETED";
+        await orderHistory.save();
+
+        // 5. Update Cache
         if (wallet) {
             await redisClient.setEx(`balance:${userId}`, 3600, wallet.balance.toFixed(2));
         }
@@ -75,6 +81,25 @@ module.exports.processOrder = async (orderData) => {
 
         return { success: true, message: "Order processed successfully" };
     } catch (error) {
+        try {
+            if(orderHistory){
+             orderHistory.status = "FAILED";
+             orderHistory.reason = error.message;
+             await orderHistory.save();
+            }
+        } catch (error) {
+            // fallback if pending not created
+            await OrdersHistoryModel.create({
+                symbol,
+                qty: quantity,
+                price: close,
+                totalAmount: totalPrice,
+                mode,
+                email,
+                status: "FAILED",
+                reason: error.message
+            });
+        }
         return { success: false, message: "Order failed", error: error.message };
     }
-};
+};
