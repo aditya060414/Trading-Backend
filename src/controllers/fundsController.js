@@ -192,35 +192,30 @@ module.exports.withdrawFunds = async (req, res) => {
     }
 };
 
-module.exports.buyStock = async ({ totalPrice, userId }) => {
-
-    // 1. deduct amount from wallet
+module.exports.updateBalance = async ({ userId, amount, type }) => {
+    // 1. Update wallet atomically within the session
     const wallet = await Wallet.findOneAndUpdate(
-        { userId, balance: { $gte: totalPrice } },
-        { $inc: { balance: -totalPrice } },
-        { new: true }
-    )
+        { userId, balance: { $gte: type === "BUY" ? Math.abs(amount) : 0 } },
+        { $inc: { balance: amount } },
+        { new: true, 
+            // session 
+        }
+    );
 
     if (!wallet) {
-        throw new Error("Insufficient funds");
+        throw new Error("Insufficient funds or wallet not found");
     }
 
+    // 2. Create transaction record
+    await Transaction.create([{
+        userId,
+        type,
+        amount: Math.abs(amount),
+        balanceAfter: wallet.balance,
+        status: "COMPLETED"
+    }],
+    // { session }
+);
+
     return wallet;
-
-
 };
-
-module.exports.sellStock = async ({ totalPrice, userId }) => {
-    // 1. Add amount to wallet
-    const wallet = await Wallet.findOneAndUpdate(
-        { userId },
-        { $inc: { balance: +totalPrice } },
-        { new: true }
-    )
-
-    if (!wallet) {
-        throw new Error("Failed to Update Wallet");
-    }
-
-    return wallet;
-}

@@ -1,4 +1,5 @@
 const { OrdersHistoryModel } = require('../models/OrdersHistoryModel');
+const { OrdersModel } = require('../models/OrdersModel');
 const orderService = require('../services/orderServices');
 
 module.exports.placeOrder = async (req, res) => {
@@ -8,10 +9,10 @@ module.exports.placeOrder = async (req, res) => {
 
     // 1. Validation
     if (!quantity || quantity < 0 || !symbol || !close || !["BUY", "SELL"].includes(mode)) {
-        return res.status(400).json({ success: false, message: "Invalid order data" });
+        return res.status(400).json({ data: [], success: false, message: "Invalid order data" });
     }
     if (!email) {
-        return res.status(400).json({ success: false, message: "Email required" })
+        return res.status(400).json({ data: [], success: false, message: "Email required" })
     }
 
     try {
@@ -48,25 +49,56 @@ module.exports.getUserHistory = async (req, res) => {
             })
         }
 
-        const history = await OrdersHistoryModel.find({email:userEmail});
+        const history = await OrdersHistoryModel.find({ email: userEmail });
 
-        if(!history){
+        if (!history) {
             return res.status(404).json({
-                status:false,
-                message:"No History Found."
+                status: false,
+                message: "No History Found."
             })
         }
 
         return res.status(200).json({
-            status:true,
-            message:"History Fetched Successfully",
-            data:history
+            status: true,
+            message: "History Fetched Successfully",
+            data: history
         })
 
     } catch (error) {
         return res.status(500).json({
-            status:false,
-            message:"Internal Server Error."
+            status: false,
+            message: "Internal Server Error."
+        })
+    }
+
+}
+
+module.exports.getOrders = async (req, res) => {
+    const userId = req.user.id;
+    if (!userId) {
+        return res.status(401).json({
+            status: false,
+            message: "User not logged in."
+        })
+    }
+    try {
+        const orders = await OrdersModel.find({ userId });
+        if (!orders) {
+            return res.status(200).json({
+                data: [],
+                message: "No orders found",
+                status: true
+            })
+        }
+        return res.status(201).json({
+            data: orders,
+            message: "Order fetched successfully",
+            status: true,
+        })
+    } catch (error) {
+        return res.json({
+            status: false,
+            message: error.message,
         })
     }
 

@@ -15,10 +15,6 @@ const fetchStock = async () => {
         stockCache = res.data;
         console.log("SUCCESS: Stock cache populated with", stockCache.length, "items.");
 
-        // Log one item to see the keys (symbol, tradeDate, etc)
-        if (stockCache.length > 0) {
-            console.log("Sample item from API:", stockCache[0]);
-        }
     } catch (error) {
         console.error("Critical Fetch Error:", error.message);
     }
@@ -53,12 +49,8 @@ const getPortfolio = async (req, res) => {
 
             return dbSymbols.some(dbSym => cacheSym === dbSym || cacheSym.startsWith(dbSym + "."));
         });
-
-        console.log("Symbols in DB:", dbSymbols);
         if (relevantStocks.length > 0) {
-            console.log("Matches found in cache:", [...new Set(relevantStocks.map(s => s.symbol))]);
-        } else {
-            console.log("Sample symbols from cache to compare:", stockCache.slice(0, 5).map(s => s.symbol));
+            [...new Set(relevantStocks.map(s => s.symbol))];
         }
 
         if (!relevantStocks.length) {

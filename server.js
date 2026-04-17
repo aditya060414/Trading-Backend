@@ -9,8 +9,7 @@ const PORT = process.env.PORT || 8000;
 // Connect DB and start server
 connectDB().then(async () => {
 
-    fetchStock();
-    setInterval(fetchStock, 5 * 60 * 1000);
+    await fetchStock();
 
     app.listen(PORT, () => {
         console.log(`Server is listening on ${PORT}`);

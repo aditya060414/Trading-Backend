@@ -5,5 +5,6 @@ const { userVerification } = require('../middleware/AuthMiddleWare');
 
 router.post('/placeOrder', userVerification, orderController.placeOrder);
 router.get('/history', userVerification, orderController.getUserHistory)
+router.get('/',userVerification,orderController.getOrders)
 
 module.exports = router;
