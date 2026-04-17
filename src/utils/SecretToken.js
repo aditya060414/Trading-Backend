@@ -13,7 +13,7 @@ module.exports.generateAccessToken = (user) => {
   return jwt.sign(
     { id: user._id, role: user.role }, // Include role for faster authorization
     JWT_SECRET,
-    { expiresIn: "15m",
+    { expiresIn: "1d",
       issuer: "MarketEx",
      }
   );

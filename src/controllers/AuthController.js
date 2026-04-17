@@ -20,14 +20,13 @@ const cacheUserSession = async (user) => {
 module.exports.SignUp = async (req, res) => {
   try {
     const { email, password, username, contact } = req.body;
-
     // 1. Check if user already exists
     const existingUSer = await User.findOne({ email });
-    
+
     if (existingUSer) {
       return res.status(409).json({ message: "User already exists" });
     }
-    
+
     // 2. Create User
     const user = await User.create({
       username,
@@ -35,8 +34,7 @@ module.exports.SignUp = async (req, res) => {
       password,
       contact,
     });
-    
-    console.log(email,password,username,contact);
+
     // 3. Cache the new user in Redis immediately
     const cachedData = await cacheUserSession(user);
 
@@ -51,10 +49,10 @@ module.exports.SignUp = async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", // Secure in production
       sameSite: "Lax",
-      maxAge: 15 * 60 * 1000, // 15 mins
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
     });
 
-     res.cookie("refreshToken", refreshToken, {
+    res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "Lax",
@@ -76,7 +74,6 @@ module.exports.SignUp = async (req, res) => {
 module.exports.Login = async (req, res) => {
   try {
     const { email, password } = req.body;
-
     //  Check if all fields are required
     if (!email || !password) {
       return res.status(400).json({ message: "All fields are required" });
@@ -109,7 +106,7 @@ module.exports.Login = async (req, res) => {
       secure: process.env.NODE_ENV === "production",
       sameSite: "Lax",
       path: "/",
-      maxAge: 15 * 60 * 1000, //15 mins
+      maxAge: 24 * 60 * 60 * 1000, //24 hours
     });
 
     res.cookie("refreshToken", refreshToken, {
@@ -133,7 +130,7 @@ module.exports.Login = async (req, res) => {
 module.exports.Logout = async (req, res) => {
   try {
     const refreshToken = req.cookies.refreshToken;
-    
+
     if (refreshToken) {
       try {
         const decoded = jwt.decode(refreshToken); // Just decode to get ID
@@ -173,7 +170,7 @@ module.exports.RefreshToken = async (req, res) => {
 
     // 3. Get user details for the new Access Token (we need the role)
     let userData = await redisClient.get(`user:${decoded.id}`);
-    
+
     if (userData) {
       userData = JSON.parse(userData);
       // Map 'id' back to '_id' if necessary for generateAccessToken

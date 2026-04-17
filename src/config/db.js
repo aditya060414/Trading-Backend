@@ -11,15 +11,4 @@ const connectDB = async () => {
   }
 };
 
-// Secondary Stock database
-const stockDB = mongoose.createConnection(process.env.STOCKDB);
-
-stockDB.on("connected", () => {
-  console.log("Stock Database Connected");
-});
-
-stockDB.on("error", (err) => {
-  console.error("Stock DB error:", err.message);
-});
-
-module.exports = { connectDB, stockDB };
+module.exports = { connectDB }
