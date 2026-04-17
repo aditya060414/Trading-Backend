@@ -50,6 +50,7 @@ module.exports.processOrder = async (orderData) => {
                 await existingOrder.save();
             } else {
                 await OrdersModel.create({
+                    userId,
                     symbol,
                     qty: quantity,
                     avgPrice: close,
