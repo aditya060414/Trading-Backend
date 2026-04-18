@@ -69,3 +69,35 @@ module.exports.addToWatchlist = async (req, res) => {
     }
 
 }
+
+module.exports.removeStock = async (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) {
+        return res.status(401).json({
+            message: "Unauthorized request."
+        });
+    }
+    const { symbol } = req.body;
+    if (!symbol) {
+        return res.status(400).json({
+            message: "Symbol is missing."
+        })
+    }
+    try {
+        const stock = await WatchlistModel.findOne({ userId, symbol })
+        if (!stock) {
+            return res.status(404).json({
+                message: "Stock not found in watchlist."
+            })
+        }
+        await WatchlistModel.deleteOne({ userId, symbol })
+        return res.status(200).json({
+            message: "Stock removed from watchlist successfully."
+        })
+    } catch (error) {
+        console.error("Error in removeStock:", error)
+        return res.status(500).json({
+            message: "Internal server error."
+        })
+    }
+}
