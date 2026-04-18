@@ -1,4 +1,5 @@
 const { WatchlistModel } = require("../models/WatchlistModel")
+const { fetchStock, getStockCache } = require("./PortfolioController");
 
 module.exports.getWatchlist = async (req, res) => {
     const userId = req.user?.id;
@@ -8,24 +9,48 @@ module.exports.getWatchlist = async (req, res) => {
         });
     }
     try {
-        const stock = await WatchlistModel.find({ userId });
-        if (!stock) {
+        const watchlistItems = await WatchlistModel.find({ userId });
+        if (!watchlistItems.length) {
             return res.status(200).json({
                 stock: [],
                 message: "No stock found in watchlist."
             })
         }
+        let latestData = getStockCache();
+        if (latestData.length === 0) {
+            await fetchStock();
+            latestData = getStockCache();
+        }
+        const updatedWatchlist = watchlistItems.map((item) => {
+            const dbSymbol = item.symbol.trim().toUpperCase();
+
+            // Find match in cache (handling potential .NS suffix)
+            const marketInfo = latestData.find(s => {
+                const cacheSym = s.symbol.trim().toUpperCase();
+                return cacheSym === dbSymbol || cacheSym === `${dbSymbol}.NS`;
+            });
+            return {
+                _id: item._id,
+                symbol: item.symbol,
+                open: marketInfo ? marketInfo.open : item.open,
+                high: marketInfo ? marketInfo.high : item.high,
+                low: marketInfo ? marketInfo.low : item.low,
+                close: marketInfo ? marketInfo.close : item.close,
+                prevClose: marketInfo ? marketInfo.prevClose : item.close,
+                change: marketInfo ? (marketInfo.close - marketInfo.prevClose).toFixed(2) : 0,
+            };
+        });
+
         return res.status(200).json({
-            stock: stock,
-            message: "Stock fetched successfully",
-        })
+            stock: updatedWatchlist,
+            message: "Watchlist fetched with latest prices",
+        });
+
     } catch (error) {
-        console.log(error.message);
-        return res.status(500).json({
-            message: "Internal server error."
-        })
+        console.error("Watchlist Fetch Error:", error.message);
+        return res.status(500).json({ message: "Internal server error." });
     }
-}
+};
 
 module.exports.addToWatchlist = async (req, res) => {
     const userId = req.user?.id;
@@ -35,10 +60,10 @@ module.exports.addToWatchlist = async (req, res) => {
         });
     }
 
-    const { symbol, high, close, low } = req.body;
-    if (!symbol || !high || !close) {
+    const { symbol, high, close, low, open } = req.body;
+    if (!symbol || !high || !close || !open || !low) {
         return res.status(400).json({
-            message: "Symbol, high, and close are required."
+            message: "Symbol, high, open, low and close are required."
         });
     }
 
@@ -52,6 +77,7 @@ module.exports.addToWatchlist = async (req, res) => {
         const setStock = await WatchlistModel.create({
             userId,
             symbol,
+            open,
             high,
             close,
             low
