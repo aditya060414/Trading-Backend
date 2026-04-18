@@ -143,4 +143,5 @@ const getPortfolio = async (req, res) => {
     }
 }
 
-module.exports = { getPortfolio, fetchStock }
+const getStockCache = () => stockCache;
+module.exports = { getPortfolio, fetchStock, getStockCache }
