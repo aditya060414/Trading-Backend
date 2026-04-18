@@ -8,7 +8,7 @@ const helmet = require('helmet'); // Adds security headers
 const authRoutes = require("./src/routes/AuthRoute");
 const portfolioRoutes = require("./src/routes/PortfolioRoute"); // Combined Holdings/Positions
 const orderRoutes = require("./src/routes/OrderRoute");        // Combined Orders/History
-// const watchlistRoutes = require("./src/routes/WatchlistRoute");
+const watchlistRoutes = require("./src/routes/WatchlistRoute");
 const fundRoutes = require("./src/routes/FundRoute");          // Combined Funds/History
 const home = require("./src/routes/Home");
 const app = express();
@@ -34,7 +34,7 @@ app.use('/', home);
 app.use(`${API_PREFIX}/auth`, authRoutes);
 app.use(`${API_PREFIX}/portfolio`, portfolioRoutes);
 app.use(`${API_PREFIX}/orders`, orderRoutes);
-// app.use(`${API_PREFIX}/watchlist`, watchlistRoutes);
+app.use(`${API_PREFIX}/watchlist`, watchlistRoutes);
 app.use(`${API_PREFIX}/funds`, fundRoutes);
 
 // --- 3. Error Handling Middleware ---
