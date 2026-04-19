@@ -1,8 +1,10 @@
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
-const morgan = require('morgan'); // Highly recommended for logging requests
-const helmet = require('helmet'); // Adds security headers
+const morgan = require('morgan');
+const helmet = require('helmet');
+const compression = require('compression');
+const rateLimit = require('express-rate-limit');
 
 // Import Routes (Keeping naming consistent)
 const authRoutes = require("./src/routes/AuthRoute");
@@ -13,29 +15,55 @@ const fundRoutes = require("./src/routes/FundRoute");          // Combined Funds
 const home = require("./src/routes/Home");
 const app = express();
 
-// --- 1. Security & Global Middleware ---
-app.use(helmet()); // Basic security headers
-app.use(morgan('dev')); // Logs all requests to console
+// --- 1. Global Middleware ---
 app.use(cors({
     origin: process.env.CLIENT_URL || "http://localhost:3000",
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true
 }));
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+app.use(compression()); // Compress all responses
+
+// Conditional logging format based on environment
+const logFormat = process.env.NODE_ENV === 'production' ? 'combined' : 'dev';
+app.use(morgan(logFormat));
+
+
+
+// Rate Limiting
+const globalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: process.env.NODE_ENV === "production" ? 100 : 1000, // Limit each IP to 100 requests per windowMs
+    message: "Too many requests from this IP, please try again after 15 minutes"
+});
+app.use(globalLimiter);
 
 // Express 4.16+ has built-in JSON parsing; bodyParser.json() is no longer needed
-app.use(express.json()); 
+app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // For parsing form data if needed
 app.use(cookieParser());
-
+app.set("trust proxy", 1);
 // --- 2. API Routes (Versioned) ---
-// Prefixing with /api/v1 is a professional standard
 const API_PREFIX = "/api/v1";
-app.use('/', home);
-app.use(`${API_PREFIX}/auth`, authRoutes);
-app.use(`${API_PREFIX}/portfolio`, portfolioRoutes);
-app.use(`${API_PREFIX}/orders`, orderRoutes);
-app.use(`${API_PREFIX}/watchlist`, watchlistRoutes);
-app.use(`${API_PREFIX}/funds`, fundRoutes);
+app.use(`${API_PREFIX}`, home);
+
+// Auth-specific Rate Limiting (Stricter)
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20, // Limit login/register attempts
+    message: "Too many authentication attempts, please try again after 15 minutes"
+});
+const sensitiveLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 50
+});
+app.use(`${API_PREFIX}/auth`, authLimiter, authRoutes);
+app.use(`${API_PREFIX}/portfolio`, sensitiveLimiter, portfolioRoutes);
+app.use(`${API_PREFIX}/orders`, sensitiveLimiter, orderRoutes);
+app.use(`${API_PREFIX}/watchlist`, sensitiveLimiter, watchlistRoutes);
+app.use(`${API_PREFIX}/funds`, sensitiveLimiter, fundRoutes);
 
 // --- 3. Error Handling Middleware ---
 // Catch-all for routes that don't exist
@@ -47,7 +75,7 @@ app.use((req, res, next) => {
 
 // Global Error Handler (Prevents server crashes and hides stack traces in production)
 app.use((err, req, res, next) => {
-    const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+    const statusCode = err.statusCode || res.statusCode || 500;
     res.status(statusCode).json({
         success: false,
         message: err.message,
