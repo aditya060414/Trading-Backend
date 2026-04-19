@@ -48,14 +48,14 @@ module.exports.SignUp = async (req, res) => {
     res.cookie("token", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", // Secure in production
-      sameSite: "Lax",
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+      maxAge: 15 * 60 * 1000, // 15 minutes
     });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "Lax",
+      sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
       path: "/api/v1/auth/refresh", // Security: Only send this cookie to the /refresh endpoint
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
@@ -104,15 +104,15 @@ module.exports.Login = async (req, res) => {
     res.cookie("token", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "Lax",
+      sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
       path: "/",
-      maxAge: 24 * 60 * 60 * 1000, //24 hours
+      maxAge: 15 * 60 * 1000, //15 minutes
     });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "Lax",
+      sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
       path: "/api/v1/auth/refresh", // Security: Only send this cookie to the /refresh endpoint
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
@@ -133,7 +133,7 @@ module.exports.Logout = async (req, res) => {
 
     if (refreshToken) {
       try {
-        const decoded = jwt.decode(refreshToken); // Just decode to get ID
+        const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET); // Just decode to get ID
         if (decoded && decoded.id) {
           await redisClient.del(`refresh:${decoded.id}`); // Kill the session in Redis
           await redisClient.del(`user:${decoded.id}`);    // Kill the user data cache
@@ -143,8 +143,17 @@ module.exports.Logout = async (req, res) => {
       }
     }
 
-    res.clearCookie("token", { path: "/" });
-    res.clearCookie("refreshToken", { path: "/api/v1/auth/refresh" });
+    res.clearCookie("token", {
+      path: "/",
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+    });
+
+    res.clearCookie("refreshToken", {
+      path: "/api/v1/auth/refresh",
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+    });
 
     res.status(200).json({ message: "Logged out from all devices" });
   } catch (err) {
@@ -154,7 +163,7 @@ module.exports.Logout = async (req, res) => {
 
 module.exports.RefreshToken = async (req, res) => {
   const refreshToken = req.cookies.refreshToken;
-
+  console.log(refreshToken);
   if (!refreshToken) return res.status(401).json({ message: "Refresh Token required" });
 
   try {
@@ -187,7 +196,7 @@ module.exports.RefreshToken = async (req, res) => {
     res.cookie("token", newAccessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "Lax",
+      sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
       maxAge: 15 * 60 * 1000,
     });
 
