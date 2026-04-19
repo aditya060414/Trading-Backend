@@ -3,7 +3,7 @@ const axios = require('axios');
 
 let stockCache = [];
 
-const wss = new WebSocket.Server({ port: 4000 });
+const wss = new WebSocket.Server({ port: 4000 || process.env.PORT });
 
 console.log("WebSocket server running on ws://localhost:4000");
 
