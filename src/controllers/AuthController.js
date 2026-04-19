@@ -20,13 +20,18 @@ const cacheUserSession = async (user) => {
 module.exports.SignUp = async (req, res) => {
   try {
     const { email, password, username, contact } = req.body;
+    if (!email || !password || !username || !contact) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
     // 1. Check if user already exists
-    const existingUSer = await User.findOne({ email });
-
-    if (existingUSer) {
+    const existingUser = await User.findOne({ email });
+    
+    if (existingUser) {
       return res.status(409).json({ message: "User already exists" });
     }
-
+    if(contact === existingUser.contact || username === existingUser.username){
+      return res.status(409).json({ message: "User already exists" });
+    }
     // 2. Create User
     const user = await User.create({
       username,
