@@ -16,8 +16,18 @@ const home = require("./src/routes/Home");
 const app = express();
 
 // --- 1. Global Middleware ---
+const allowedOrigins = [
+    "http://localhost:3000",
+    "https://trading-dashboard-v2mi.onrender.com"
+];
 app.use(cors({
-    origin: process.env.CLIENT_URL || "http://localhost:3000",
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error("Not allowed by CORS"));
+        }
+    },
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true
 }));
