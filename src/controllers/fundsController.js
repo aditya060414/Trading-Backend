@@ -192,12 +192,13 @@ module.exports.withdrawFunds = async (req, res) => {
     }
 };
 
-module.exports.updateBalance = async ({ userId, amount, type }) => {
+module.exports.updateBalance = async ({ userId, amount, type, symbol }) => {
     // 1. Update wallet atomically within the session
     const wallet = await Wallet.findOneAndUpdate(
         { userId, balance: { $gte: type === "BUY" ? Math.abs(amount) : 0 } },
         { $inc: { balance: amount } },
-        { new: true, 
+        {
+            new: true,
             // session 
         }
     );
@@ -212,10 +213,11 @@ module.exports.updateBalance = async ({ userId, amount, type }) => {
         type,
         amount: Math.abs(amount),
         balanceAfter: wallet.balance,
-        status: "COMPLETED"
+        status: "COMPLETED",
+        symbol: symbol
     }],
-    // { session }
-);
+        // { session }
+    );
 
     return wallet;
 };

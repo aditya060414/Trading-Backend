@@ -14,6 +14,7 @@ const transactionSchema = new Schema({
     required: true,
     set: v => parseFloat(v.toFixed(2))
   },
+  symbol: { type: String, default: null },
   status: { type: String, enum: ["PENDING", "COMPLETED", "FAILED"], default: "PENDING" },
   referenceId: { type: String }, // External ID (e.g., phonepe/UPI ID)
   balanceBefore: { type: Number, set: v => parseFloat(v.toFixed(2)) },
