@@ -4,8 +4,10 @@
   "description": "",
   "main": "src/server.js",
   "scripts": {
-    "main": "nodemon server.js",
-    "stock": "nodemon wsServer.js"
+    "start": "node server.js",
+    "start:ws": "node wsServer.js",
+    "dev": "nodemon server.js",
+    "dev:ws": "nodemon wsServer.js"
   },
   "author": "",
   "license": "ISC",
@@ -17,10 +19,12 @@
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
     "body-parser": "^2.2.2",
+    "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.2.4",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.3.2",
     "finnhub": "^2.0.13",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
