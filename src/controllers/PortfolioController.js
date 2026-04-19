@@ -54,12 +54,36 @@ const getPortfolio = async (req, res) => {
         }
 
         if (!relevantStocks.length) {
-            return res.status(200).json({
-                portfolioValue: 0,
-                investedAmount: holdings.reduce((acc, h) => acc + h.totalInvestment, 0),
+            console.warn("Live API failed, using DB-only fallback");
+
+            let portfolioValue = 0;
+            let investedAmount = 0;
+
+            const allocation = holdings.map(h => {
+                const value = h.totalInvestment;
+
+                portfolioValue += value;
+                investedAmount += value;
+
+                return {
+                    symbol: h.symbol,
+                    qty: h.qty,
+                    avgPrice: h.avgPrice,
+                    currPrice: h.avgPrice,
+                    totalInvestment: h.totalInvestment,
+                    currentValue: value,
+                    dailyGain: 0,
+                    totalGain: 0,
+                    mode: h.mode
+                };
+            });
+
+            return res.json({
+                portfolioValue,
+                investedAmount,
                 todaysGain: 0,
-                allocation: [],
-                message: "Market data for your holdings is currently unavailable."
+                allocation,
+                message: "Live prices unavailable. Showing static values."
             });
         }
 
