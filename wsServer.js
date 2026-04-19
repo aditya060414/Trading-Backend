@@ -23,13 +23,13 @@ const fetchStock = async () => {
 }
 fetchStock();
 
-setInterval(fetchStock, 5000);
+setInterval(fetchStock, 1 * 60 * 60 * 1000); // 1 hour
 
 wss.on("connection", (ws) => {
   console.log("Client connected");
 
   ws.on("message", async (msg) => {
-     console.log("Received message:", msg.toString());
+    console.log("Received message:", msg.toString());
     let data;
     try {
       data = JSON.parse(msg);
