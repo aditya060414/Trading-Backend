@@ -23,6 +23,8 @@ const fetchStock = async () => {
 }
 fetchStock();
 
+setInterval(fetchStock, 6 * 60 * 60 * 1000);
+
 wss.on("connection", (ws) => {
   console.log("Client connected");
 
