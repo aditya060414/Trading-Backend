@@ -3,9 +3,13 @@ const axios = require('axios');
 
 let stockCache = [];
 
-const wss = new WebSocket.Server({ port: 4000 || process.env.PORT });
+const PORT = process.env.PORT || 4000;
+const server = http.createServer();
+const wss = new WebSocket.Server({ server });
 
-console.log("WebSocket server running on ws://localhost:4000");
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
 
 const fetchStock = async () => {
   try {
