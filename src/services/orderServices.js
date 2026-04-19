@@ -35,6 +35,7 @@ module.exports.processOrder = async (orderData) => {
             userId,
             amount: balanceChange,
             type: mode,
+            symbol: symbol
             // session
         });
 
@@ -52,7 +53,7 @@ module.exports.processOrder = async (orderData) => {
             } else {
                 await OrdersModel.create([{
                     userId, symbol, qty: quantity, avgPrice: close,
-                    totalInvestment: totalPrice, email
+                    totalInvestment: totalPrice, email, mode
                 }],
 
                     // { session }

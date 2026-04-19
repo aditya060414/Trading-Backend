@@ -6,9 +6,13 @@ module.exports.placeOrder = async (req, res) => {
     const { quantity, symbol, close, mode } = req.body;
     const email = req.user.email;
     const userId = req.user.id;
-
     // 1. Validation
-    if (!quantity || quantity < 0 || !symbol || !close || !["BUY", "SELL"].includes(mode)) {
+    const cleanedMode = mode.replace(/[{}]/g, "");
+
+    if (!["BUY", "SELL"].includes(cleanedMode)) {
+        return res.status(400).json({ data: [], success: false, message: "Invalid order data" });
+    }
+    if (!quantity || quantity <= 0 || !symbol || !close || !["BUY", "SELL"].includes(mode)) {
         return res.status(400).json({ data: [], success: false, message: "Invalid order data" });
     }
     if (!email) {
@@ -49,7 +53,7 @@ module.exports.getUserHistory = async (req, res) => {
             })
         }
 
-        const history = await OrdersHistoryModel.find({ email: userEmail });
+        const history = await OrdersHistoryModel.find({ email: userEmail }).sort({ createdAt: -1 });
 
         if (!history) {
             return res.status(404).json({
