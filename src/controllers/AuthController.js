@@ -29,9 +29,7 @@ module.exports.SignUp = async (req, res) => {
     if (existingUser) {
       return res.status(409).json({ message: "User already exists" });
     }
-    if(contact === existingUser.contact || username === existingUser.username){
-      return res.status(409).json({ message: "User already exists" });
-    }
+    
     // 2. Create User
     const user = await User.create({
       username,
