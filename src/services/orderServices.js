@@ -7,8 +7,13 @@ const redisClient = require('../config/redis');
 module.exports.processOrder = async (orderData) => {
     const { quantity, symbol, close, mode, email, userId } = orderData;
     const totalPrice = parseFloat((quantity * close).toFixed(2));
+
+    // start session to maintain atomicity
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     // 1. Log to history {STATUS - PENDING}
-    let orderHistory = await OrdersHistoryModel.create({
+    let orderHistory = await OrdersHistoryModel.create([{
         symbol,
         qty: quantity,
         price: close,
@@ -16,11 +21,9 @@ module.exports.processOrder = async (orderData) => {
         mode,
         email,
         status: "PENDING",
-    });
-    // const session = await mongoose.startSession();
-    // session.startTransaction();
+    }], { session });
     try {
-        const existingOrder = await OrdersModel.findOne({ email, symbol });
+        const existingOrder = await OrdersModel.findOne({ email, symbol }).session({ session });
 
         // 2. Validation Logic
         if (mode === "SELL") {
@@ -35,8 +38,8 @@ module.exports.processOrder = async (orderData) => {
             userId,
             amount: balanceChange,
             type: mode,
-            symbol: symbol
-            // session
+            symbol: symbol,
+            session
         });
 
         // 3. Update Holdings
@@ -48,15 +51,14 @@ module.exports.processOrder = async (orderData) => {
                 existingOrder.qty = newQty;
                 existingOrder.totalInvestment = newInvestment;
                 existingOrder.avgPrice = parseFloat((newInvestment / newQty).toFixed(2));
-                await existingOrder.save();
-                //({ session });
+                await existingOrder.save({ session });
             } else {
                 await OrdersModel.create([{
                     userId, symbol, qty: quantity, avgPrice: close,
                     totalInvestment: totalPrice, email, mode
                 }],
 
-                    // { session }
+                    { session }
                 );
             }
         } else {
@@ -66,21 +68,19 @@ module.exports.processOrder = async (orderData) => {
             existingOrder.totalInvestment -= parseFloat((existingOrder.avgPrice * quantity).toFixed(2));
 
             if (existingOrder.qty <= 0) {
-                await OrdersModel.deleteOne({ _id: existingOrder._id });
-                //.session(session);
+                await OrdersModel.deleteOne({ _id: existingOrder._id })
+                    .session(session);
             } else {
-                await existingOrder.save();
-                //({ session });
+                await existingOrder.save({ session });
             }
         }
 
         // 4. Finalize History
         orderHistory.status = "COMPLETED";
-        await orderHistory.save();
-        // ({ session });
+        await orderHistory.save({ session });
 
         // Commit all changes
-        // await session.commitTransaction();
+        await session.commitTransaction();
 
         // 5. Update Cache (After transaction success)
         await redisClient.setEx(`balance:${userId}`, 3600, wallet.balance.toFixed(2));
@@ -89,16 +89,23 @@ module.exports.processOrder = async (orderData) => {
         return { success: true, message: "Order processed successfully" };
 
     } catch (error) {
-        // await session.abortTransaction();
+        await session.abortTransaction();
 
         // Update history status to failed
-        orderHistory.status = "FAILED";
-        orderHistory.reason = error.message;
-        await orderHistory.save();
+        await OrdersHistoryModel.create({
+            symbol,
+            qty: quantity,
+            price: close,
+            totalAmount: totalPrice,
+            mode,
+            email,
+            status: "FAILED",
+            reason: error.message
+        });
 
         return { success: false, message: error.message };
     }
-    // finally {
-    //     session.endSession();
-    // }
+    finally {
+        session.endSession();
+    }
 };
