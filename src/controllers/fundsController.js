@@ -29,6 +29,9 @@ module.exports.getFunds = async (req, res) => {
 }
 module.exports.addFunds = async (req, res) => {
     let transaction;
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
         const userId = req.user.id;
         let { amount } = req.body;
@@ -41,19 +44,19 @@ module.exports.addFunds = async (req, res) => {
         }
 
         // 1. Log Transaction
-        transaction = await Transaction.create({
+        transaction = await Transaction.create([{
             userId,
             type: "ADD",
             amount: cleanAmount,
             status: "PENDING",
-        });
+        }], { session });
 
         // 2. Atomic Update in DB
         // $inc works with decimals, Mongoose 'set' handles the rounding
         const wallet = await Wallet.findOneAndUpdate(
             { userId },
             { $inc: { balance: cleanAmount } },
-            { new: true, upsert: true }
+            { new: true, upsert: true, session }
         );
 
         const finalBalance = wallet.balance.toFixed(2);
@@ -61,16 +64,22 @@ module.exports.addFunds = async (req, res) => {
         // 3. Mark COMPLETED
         transaction.status = "COMPLETED";
         transaction.balanceAfter = wallet.balance;
-        await transaction.save();
+        await transaction.save({ session });
 
         // 4. Update Redis
         await redisClient.setEx(`balance:${userId}`, 3600, finalBalance);
+        await session.commitTransaction();
+        session.endSession();
 
         res.status(200).json({
             success: true,
             newBalance: finalBalance
         });
     } catch (err) {
+        if (session.inTransaction()) {
+            await session.abortTransaction();
+        }
+        session.endSession();
         // 4. Mark FAILED
         if (transaction) {
             transaction.status = "FAILED";
@@ -78,6 +87,9 @@ module.exports.addFunds = async (req, res) => {
             await transaction.save();
         }
         res.status(500).json({ message: "Transaction failed" });
+    }
+    finally {
+        session.endSession();
     }
 }
 
@@ -107,13 +119,14 @@ module.exports.withdrawFunds = async (req, res) => {
 
     let transaction;
 
-    // 1. make sure the amount is fixed to 2 decimal
+
     const cleanAmount = parseFloat(parseFloat(amount).toFixed(2));
-    if (isNaN(cleanAmount) || cleanAmount < 0) {
+    if (isNaN(cleanAmount) || cleanAmount <= 0) {
         return res.status(400).json({ message: "Invalid withdrawal amount" });
     }
 
-    // 2. Reddis lock, to prevent same user from spending double the amount
+
+
     const lockKey = `lock:withdraw:${userId}`;
     const isLocked = await redisClient.set(lockKey, "locked", {
         NX: true, //only set if key does not exist
@@ -123,14 +136,17 @@ module.exports.withdrawFunds = async (req, res) => {
     if (!isLocked) {
         return res.status(429).json({ message: "Another transaction is in progress. Please wait." });
     }
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
         // 3. Create transaction Pending
-        transaction = await Transaction.create({
+        transaction = await Transaction.create([{
             userId,
             type: "WITHDRAW",
             amount: cleanAmount,
             status: "PENDING"
-        })
+        }], { session })
 
         // 4. ATOMIC UPDATE: Only subtract if balance >= cleanAmount
         const wallet = await Wallet.findOneAndUpdate(
@@ -139,7 +155,7 @@ module.exports.withdrawFunds = async (req, res) => {
                 balance: { $gte: cleanAmount } // Condition: Balance must be greater or equal
             },
             { $inc: { balance: -cleanAmount } }, // Subtract
-            { new: true }
+            { new: true, session }
         );
 
         // 5. Check if the update actually happened (wallet will be null if balance was insufficient)
@@ -153,7 +169,9 @@ module.exports.withdrawFunds = async (req, res) => {
         // 6. Log the Transaction (For audit trail)
         transaction.status = "COMPLETED";
         transaction.balanceAfter = wallet.balance;
-        await transaction.save();
+        await transaction.save({ session });
+        await session.commitTransaction();
+        session.endSession();
 
         // 7. Update Redis Balance Cache
         await redisClient.setEx(`balance:${userId}`, 3600, finalBalance);
@@ -165,26 +183,23 @@ module.exports.withdrawFunds = async (req, res) => {
         });
 
     } catch (err) {
+        if (session.inTransaction()) {
+            await session.abortTransaction();
+        }
+        session.endSession();
+
         if (transaction) {
-            transaction.status = "FAILED";
-            transaction.reason = err.message;
-            await transaction.save();
+            await Transaction.updateOne(
+                { _id: transaction._id },
+                { status: "FAILED", reason: err.message }
+            ).catch(console.error); // Fallback for secondary failure
         }
 
         // Handle known errors properly
-        if (err.message.includes("Insufficient")) {
-            return res.status(400).json({
-                success: false,
-                message: err.message
-            });
-        }
-
-        // Unknown error
-        console.error("Withdrawal Error:", err);
-
-        res.status(500).json({
+        const isInsufficient = err.message.includes("Insufficient");
+        return res.status(isInsufficient ? 400 : 500).json({
             success: false,
-            message: "Internal Server Error during withdrawal"
+            message: isInsufficient ? err.message : "Internal Server Error during withdrawal"
         });
     } finally {
         // 8. RELEASE LOCK, so that in future user can make transactions
@@ -192,14 +207,14 @@ module.exports.withdrawFunds = async (req, res) => {
     }
 };
 
-module.exports.updateBalance = async ({ userId, amount, type, symbol }) => {
+module.exports.updateBalance = async ({ userId, amount, type, symbol, session }) => {
     // 1. Update wallet atomically within the session
     const wallet = await Wallet.findOneAndUpdate(
         { userId, balance: { $gte: type === "BUY" ? Math.abs(amount) : 0 } },
         { $inc: { balance: amount } },
         {
             new: true,
-            // session 
+            session
         }
     );
 
@@ -214,9 +229,10 @@ module.exports.updateBalance = async ({ userId, amount, type, symbol }) => {
         amount: Math.abs(amount),
         balanceAfter: wallet.balance,
         status: "COMPLETED",
-        symbol: symbol
+        symbol: symbol,
+        orderId,
     }],
-        // { session }
+        { session }
     );
 
     return wallet;
