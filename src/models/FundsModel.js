@@ -9,6 +9,7 @@ const transactionSchema = new Schema({
     enum: ["ADD", "WITHDRAW", "ORDER_DEBIT", "ORDER_CREDIT", "BUY", "SELL"],
     required: true
   },
+  orderId: { type: String, unique: true },
   amount: {
     type: Number,
     required: true,
