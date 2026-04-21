@@ -30,6 +30,7 @@ npm install ws
 
 ## server.js
 
+<<<<<<< HEAD
 ### configuration
 
 ````javascript
@@ -37,12 +38,21 @@ require("dotenv").config();
 process.env.VARIABLE_NAME 
 **this is used to load environment variables from a `.env` file into node.js app.**
 ```
+=======
+```javascript
+require("dotenv").config();
+process.env.VARIABLE_NAME
+```
+// this is used to load environment variables from a .env file into node.js app.
+
+>>>>>>> a91bd560f9d3468b6fe5a7cd09f18d146497277e
 
 ### database connection
 ````javascript
 connectDB()
 **a database connection call is sent to the mongoose, with the required `url` from .env file.**
 ````
+<<<<<<< HEAD
 
 ###
 ````javascript
@@ -79,3 +89,6 @@ const { fetchStock } = require('./src/controllers/PortfolioController');
 project-root/
 |***
 ```
+=======
+```javascript
+>>>>>>> a91bd560f9d3468b6fe5a7cd09f18d146497277e
