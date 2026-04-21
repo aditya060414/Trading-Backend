@@ -33,7 +33,7 @@ npm install ws
 ````javascript
 require("dotenv").config();
 process.env.VARIABLE_NAME
-``` **this is used to load environment variables from a .env file into node.js app.**
+```this is used to load environment variables from a .env file into node.js app.
 
 
 ````
