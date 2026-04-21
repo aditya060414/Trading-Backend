@@ -77,5 +77,48 @@ const { fetchStock } = require('./src/controllers/PortfolioController');
 
 ```text
 project-root/
-|---
+├── node_modules/
+├── .env
+├── .gitignore
+├── package.json
+├── package-lock.json
+├── README.md
+├── src/
+    ├── config/
+        ├── db.js
+        ├── redis.js
+    ├── constants/
+        ├── orderConstants.js
+    ├── controllers/
+        ├── AuthController.js
+        ├── fundsController.js
+        ├── orderController.js
+        ├── PortfolioController.js
+        ├── watchlistController.js
+    ├── middlewares/
+        ├── AuthMiddleWare.js
+    ├── modules/
+        ├── FundsModel.js
+        ├── HoldingsModel.js
+        ├── OrdersHistoryModel.js
+        ├── UserModel.js
+        ├── WatchlistModel.js
+    ├── routes/
+        ├── AuthRoute.js
+        ├── FundRoute.js
+        ├── Home.js
+        ├── OrderRoute.js
+        ├── PortfolioRoute.js
+        ├── WatchlistRoute.js
+    ├── schems/
+        ├── HoldingsSchema.js
+        ├── OrdersHistorySchema.js
+        ├── WatchlistSchema.js
+    ├── services/
+        ├── orderServices.js
+    ├── utils
+        ├── SecretToken.js
+├── app.js
+├── server.js
+├── wsServer.js
 ```
