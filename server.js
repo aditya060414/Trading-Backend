@@ -1,6 +1,5 @@
 require("dotenv").config();
 
-const cron = require("node-cron");
 const { connectDB } = require('./src/config/db'); // Import modular DB connection
 const app = require('./app'); // import express app
 const { fetchStock } = require('./src/controllers/PortfolioController');
