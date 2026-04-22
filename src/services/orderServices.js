@@ -13,7 +13,7 @@ module.exports.processOrder = async (orderData) => {
     session.startTransaction();
 
     // 1. Log to history {STATUS - PENDING}
-    let orderHistory = await OrdersHistoryModel.create([{
+    let orderHistories = await OrdersHistoryModel.create([{
         symbol,
         qty: quantity,
         price: close,
@@ -22,6 +22,7 @@ module.exports.processOrder = async (orderData) => {
         email,
         status: "PENDING",
     }], { session });
+    let orderHistory = orderHistories[0];
     try {
         const existingOrder = await OrdersModel.findOne({ email, symbol }).session({ session });
 

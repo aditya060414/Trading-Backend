@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const { Wallet, Transaction } = require('../models/FundsModel');
 const orderService = require('../services/orderServices');
 const redisClient = require('../config/redis');
@@ -44,12 +45,13 @@ module.exports.addFunds = async (req, res) => {
         }
 
         // 1. Log Transaction
-        transaction = await Transaction.create([{
+        const transactions = await Transaction.create([{
             userId,
             type: "ADD",
             amount: cleanAmount,
             status: "PENDING",
         }], { session });
+        transaction = transactions[0];
 
         // 2. Atomic Update in DB
         // $inc works with decimals, Mongoose 'set' handles the rounding
@@ -141,12 +143,13 @@ module.exports.withdrawFunds = async (req, res) => {
     session.startTransaction();
     try {
         // 3. Create transaction Pending
-        transaction = await Transaction.create([{
+        const transactions = await Transaction.create([{
             userId,
             type: "WITHDRAW",
             amount: cleanAmount,
             status: "PENDING"
-        }], { session })
+        }], { session });
+        transaction = transactions[0];
 
         // 4. ATOMIC UPDATE: Only subtract if balance >= cleanAmount
         const wallet = await Wallet.findOneAndUpdate(
@@ -230,7 +233,6 @@ module.exports.updateBalance = async ({ userId, amount, type, symbol, session })
         balanceAfter: wallet.balance,
         status: "COMPLETED",
         symbol: symbol,
-        orderId,
     }],
         { session }
     );
