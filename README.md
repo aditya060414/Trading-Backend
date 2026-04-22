@@ -122,3 +122,5 @@ project-root/
 ├── server.js
 ├── wsServer.js
 ```
+
+## documentation pending
