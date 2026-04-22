@@ -28,8 +28,8 @@ module.exports.placeOrder = async (req, res) => {
             email,
             userId
         });
-        return res.status(201).json({
-            success: true,
+        return res.status(result.success ? 201 : 400).json({
+            success: result.success,
             message: result.message,
             error: result.error,
         });

@@ -8,12 +8,18 @@ module.exports.processOrder = async (orderData) => {
     const { quantity, symbol, close, mode, email, userId } = orderData;
     const totalPrice = parseFloat((quantity * close).toFixed(2));
 
-    // start session to maintain atomicity
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    // 1. start session if possible (Transactions require Replica Set)
+    let session = null;
+    try {
+        session = await mongoose.startSession();
+        session.startTransaction();
+    } catch (e) {
+        console.warn("Transactions not supported, falling back to standard mode");
+        session = null;
+    }
 
-    // 1. Log to history {STATUS - PENDING}
-    let orderHistories = await OrdersHistoryModel.create([{
+    // 2. Log to history {STATUS - PENDING}
+    const historyData = {
         symbol,
         qty: quantity,
         price: close,
@@ -21,10 +27,13 @@ module.exports.processOrder = async (orderData) => {
         mode,
         email,
         status: "PENDING",
-    }], { session });
+    };
+    
+    let orderHistories = await OrdersHistoryModel.create([historyData], session ? { session } : {});
     let orderHistory = orderHistories[0];
+
     try {
-        const existingOrder = await OrdersModel.findOne({ email, symbol }).session({ session });
+        const existingOrder = await OrdersModel.findOne({ email, symbol }).session(session);
 
         // 2. Validation Logic
         if (mode === "SELL") {
@@ -52,14 +61,14 @@ module.exports.processOrder = async (orderData) => {
                 existingOrder.qty = newQty;
                 existingOrder.totalInvestment = newInvestment;
                 existingOrder.avgPrice = parseFloat((newInvestment / newQty).toFixed(2));
-                await existingOrder.save({ session });
+                await existingOrder.save(session ? { session } : {});
             } else {
                 await OrdersModel.create([{
                     userId, symbol, qty: quantity, avgPrice: close,
                     totalInvestment: totalPrice, email, mode
                 }],
 
-                    { session }
+                    session ? { session } : {}
                 );
             }
         } else {
@@ -69,19 +78,20 @@ module.exports.processOrder = async (orderData) => {
             existingOrder.totalInvestment -= parseFloat((existingOrder.avgPrice * quantity).toFixed(2));
 
             if (existingOrder.qty <= 0) {
-                await OrdersModel.deleteOne({ _id: existingOrder._id })
-                    .session(session);
+                await OrdersModel.deleteOne({ _id: existingOrder._id }).session(session);
             } else {
-                await existingOrder.save({ session });
+                await existingOrder.save(session ? { session } : {});
             }
         }
 
         // 4. Finalize History
         orderHistory.status = "COMPLETED";
-        await orderHistory.save({ session });
+        await orderHistory.save(session ? { session } : {});
 
         // Commit all changes
-        await session.commitTransaction();
+        if (session && typeof session.commitTransaction === 'function') {
+            await session.commitTransaction();
+        }
 
         // 5. Update Cache (After transaction success)
         await redisClient.setEx(`balance:${userId}`, 3600, wallet.balance.toFixed(2));
@@ -113,6 +123,6 @@ module.exports.processOrder = async (orderData) => {
         return { success: false, message: error.message };
     }
     finally {
-        session.endSession();
+        if (session) session.endSession();
     }
 };
