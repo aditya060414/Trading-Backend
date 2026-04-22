@@ -21,13 +21,10 @@ const fetchStock = async () => {
     console.error("Error fetching data", error.message);
   }
 }
-fetchStock();
-
-setInterval(fetchStock, 12 * 60 * 60 * 1000); // 12 hours
 
 wss.on("connection", (ws) => {
   console.log("Client connected");
-
+  
   ws.on("message", async (msg) => {
     console.log("Received message:", msg.toString());
     let data;
@@ -36,7 +33,8 @@ wss.on("connection", (ws) => {
     } catch {
       return;
     }
-
+    
+    fetchStock();
     const { type, query } = data;
 
     if (type === "SEARCH") {
