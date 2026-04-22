@@ -84,12 +84,19 @@ app.use(`${API_PREFIX}`, home);
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 5, // Limit login/register attempts
-    message: "Too many authentication attempts, please try again after 15 minutes"
+    message: {
+        success: false,
+        message: "Too many authentication attempts, please try again after 15 minutes"
+    }
 });
 
 const sensitiveLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 50
+    max: 50,
+    message: {
+        success: false,
+        message: "High traffic detected. Please slow down and try again later."
+    }
 });
 
 app.use(`${API_PREFIX}/auth`, authLimiter, authRoutes);
