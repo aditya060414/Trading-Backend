@@ -90,7 +90,13 @@ module.exports.processOrder = async (orderData) => {
         return { success: true, message: "Order processed successfully" };
 
     } catch (error) {
-        await session.abortTransaction();
+        try {
+            if (session && typeof session.abortTransaction === 'function') {
+                await session.abortTransaction();
+            }
+        } catch (abortErr) {
+            console.error("Abort transaction failed:", abortErr.message);
+        }
 
         // Update history status to failed
         await OrdersHistoryModel.create({

@@ -78,10 +78,13 @@ module.exports.addFunds = async (req, res) => {
             newBalance: finalBalance
         });
     } catch (err) {
-        if (session.inTransaction()) {
-            await session.abortTransaction();
+        try {
+            if (session && typeof session.abortTransaction === 'function') {
+                await session.abortTransaction();
+            }
+        } catch (abortErr) {
+            console.error("Abort transaction failed:", abortErr.message);
         }
-        session.endSession();
         // 4. Mark FAILED
         if (transaction) {
             transaction.status = "FAILED";
@@ -186,10 +189,13 @@ module.exports.withdrawFunds = async (req, res) => {
         });
 
     } catch (err) {
-        if (session.inTransaction()) {
-            await session.abortTransaction();
+        try {
+            if (session && typeof session.abortTransaction === 'function') {
+                await session.abortTransaction();
+            }
+        } catch (abortErr) {
+            console.error("Abort transaction failed:", abortErr.message);
         }
-        session.endSession();
 
         if (transaction) {
             await Transaction.updateOne(
