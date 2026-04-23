@@ -37,7 +37,7 @@ module.exports.placeOrder = async (req, res) => {
         const status = err.message === "Insufficient holdings to sell" ? 400 : 500;
         return res.status(status).json({
             success: false,
-            message: err.message
+            message: "Insufficient holdings."
         });
     }
 };

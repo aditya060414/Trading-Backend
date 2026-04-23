@@ -228,7 +228,7 @@ module.exports.updateBalance = async ({ userId, amount, type, symbol, session })
     );
 
     if (!wallet) {
-        throw new Error("Insufficient funds or wallet not found");
+        throw new Error("Insufficient funds.");
     }
 
     // 2. Create transaction record
