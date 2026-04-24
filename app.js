@@ -20,6 +20,7 @@ const orderRoutes = require("./src/routes/OrderRoute");
 const watchlistRoutes = require("./src/routes/WatchlistRoute");
 const fundRoutes = require("./src/routes/FundRoute");
 const home = require("./src/routes/Home");
+const userUpdateRoutes = require("./src/routes/UserUpdate");
 
 // instance of express
 const app = express();
@@ -104,6 +105,7 @@ app.use(`${API_PREFIX}/portfolio`, sensitiveLimiter, portfolioRoutes);
 app.use(`${API_PREFIX}/orders`, sensitiveLimiter, orderRoutes);
 app.use(`${API_PREFIX}/watchlist`, sensitiveLimiter, watchlistRoutes);
 app.use(`${API_PREFIX}/funds`, sensitiveLimiter, fundRoutes);
+app.use(`${API_PREFIX}/update`, sensitiveLimiter, userUpdateRoutes);
 
 // Error Handling Middleware
 // Catch-all for routes that don't exist
