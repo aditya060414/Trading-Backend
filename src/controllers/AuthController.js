@@ -11,7 +11,7 @@ const cacheUserSession = async (user) => {
     email: user.email,
     role: user.role,
   };
-  // Store user in Redis for 24 hours (matching your cookie maxAge)
+  // Store user in Redis for 24 hours 
   await redisClient.setEx(`user:${user._id}`, 86400, JSON.stringify(userData));
   return userData;
 };
@@ -19,17 +19,19 @@ const cacheUserSession = async (user) => {
 
 module.exports.SignUp = async (req, res) => {
   try {
+    //req data and check if all data are sent or not
     const { email, password, username, contact } = req.body;
     if (!email || !password || !username || !contact) {
       return res.status(400).json({ message: "All fields are required" });
     }
     // 1. Check if user already exists
     const existingUser = await User.findOne({ email });
-    
-    if (existingUser) {
+
+    // duplicate check (need unique email and contact number)
+    if (existingUser.email === email || existingUser.contact === contact) {
       return res.status(409).json({ message: "User already exists" });
     }
-    
+
     // 2. Create User
     const user = await User.create({
       username,
