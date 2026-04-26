@@ -28,8 +28,10 @@ module.exports.SignUp = async (req, res) => {
     const existingUser = await User.findOne({ email });
 
     // duplicate check (need unique email and contact number)
-    if (existingUser.email === email || existingUser.contact === contact) {
-      return res.status(409).json({ message: "User already exists" });
+    if (existingUser) {
+      if (existingUser.email === email || existingUser.contact === contact) {
+        return res.status(409).json({ message: "User already exists" });
+      }
     }
 
     // 2. Create User
