@@ -2,18 +2,14 @@ const User = require("../models/UserModel");
 
 
 module.exports.changeUsername = async (req, res) => {
-    const { username } = req.body.username?.trim();
-    const { id } = req.user;
+    const username = req.body.username?.trim();
+    const  id  = req.user.id;
 
     if (!username) {
         return res.status(400).json({ message: "Username is required." });
     }
 
     try {
-        const userInfo = await User.findOne({ _id: id });
-        if (!userInfo) {
-            return res.status(400).json({ message: "User does not exist." });
-        }
         const updatedUser = await User.findByIdAndUpdate(id, { $set: { username } }, { new: true });
         if (!updatedUser) {
             return res.status(404).json({ message: "User does not exist." });
