@@ -5,7 +5,7 @@ const connectDB = async () => {
   try {
     // import of  mongo url from environment varaibles
     const mongoUrl = process.env.MONGO_URL;
-    // const mongoUrl = "mongodb://localhost:27017/marketEx";
+   // const mongoUrl = "mongodb://localhost:27017/marketEx";
     // if there is no url, i.e empty url then error is thrown
     if (!mongoUrl) {
       throw new Error("MONGO_URL environment variable is not defined");
