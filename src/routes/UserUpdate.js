@@ -4,7 +4,7 @@ const { changeUsername, changePassword } = require('../controllers/updateControl
 const router = express.Router();
 
 // replaces only the changed filled rest remain the same
-router.patch('/username/:id', userVerification, changeUsername);
-router.patch('/password/:id', userVerification, changePassword)
+router.patch('/username', userVerification, changeUsername);
+router.patch('/password', userVerification, changePassword)
 
 module.exports = router;
