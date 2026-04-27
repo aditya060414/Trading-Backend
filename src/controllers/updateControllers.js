@@ -4,17 +4,17 @@ const redisClient = require("../config/redis");
 module.exports.changeUsername = async (req, res) => {
     const username = req.body.username?.trim();
     const password = req.body.password;
-    const id = req.params.id;
-
+    const id = req.user.id;
+    
     if (!password) {
         return res.status(400).json({ message: "Password is required." });
     }
-
+    
     if (!username) {
         return res.status(400).json({ message: "Username is required." });
     }
-
-
+    
+    
     try {
         const user = await User.findById(id).select("+password");
         if (!user) {
@@ -40,13 +40,13 @@ module.exports.changeUsername = async (req, res) => {
     } catch (error) {
         return res.status(500).json({ message: "Failed to update username.", error: error.message });
     }
-
+    
 }
 
 module.exports.changePassword = async (req, res) => {
     const newPassword = req.body.newPassword;
     const password = req.body.password;
-    const id = req.params.id;
+    const id = req.user.id;
 
     if (!newPassword || !password) {
         return res.status(400).json({
