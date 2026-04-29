@@ -6,7 +6,7 @@ const redisClient = require("../config/redis")
 module.exports.userVerification = async (req, res,next) => {
   // request cookie stored on the browser frontend of the user, if logged in there will be cookie stored
   const token = req.cookies.token;
-  // handle no cookie or invalid
+  // no cookie or invalid
   if (!token) {
     return res.status(401).json({ status: false, message: "Login again to continue!" });
   }
@@ -17,12 +17,12 @@ module.exports.userVerification = async (req, res,next) => {
     
     const userId = decoded.id;
 
-    // handle if no user id in decoded data
+    // if no user id in decoded data
     if(!userId){
       return res.status(401).json({ status: false, message: "Login again to continue!" });
     }
 
-    // 1. Try to get user data from Redis first
+    // 1. Trying to get user data from Redis first
     const cachedUser = await redisClient.get(`user:${userId}`);
 
     if (cachedUser) {
