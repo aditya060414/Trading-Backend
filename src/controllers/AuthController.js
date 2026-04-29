@@ -1,6 +1,9 @@
 const User = require("../models/UserModel");
-const { generateAccessToken, generateRefreshToken } = require("../utils/SecretToken");
-const redisClient = require('../config/redis');
+const {
+  generateAccessToken,
+  generateRefreshToken,
+} = require("../utils/SecretToken");
+const redisClient = require("../config/redis");
 const jwt = require("jsonwebtoken");
 
 // Helper to set session in Redis
@@ -11,11 +14,10 @@ const cacheUserSession = async (user) => {
     email: user.email,
     role: user.role,
   };
-  // Store user in Redis for 24 hours 
+  // Store user in Redis for 24 hours
   await redisClient.setEx(`user:${user._id}`, 86400, JSON.stringify(userData));
   return userData;
 };
-
 
 module.exports.SignUp = async (req, res) => {
   try {
@@ -49,24 +51,27 @@ module.exports.SignUp = async (req, res) => {
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user._id);
     // Store Refresh Token in Redis
-    await redisClient.setEx(`refresh:${user._id}`, 7 * 24 * 60 * 60, refreshToken);
+    await redisClient.setEx(
+      `refresh:${user._id}`,
+      7 * 24 * 60 * 60,
+      refreshToken,
+    );
 
     // 5. Set Cookie
     res.cookie("token", accessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // Secure in production
+      secure: process.env.NODE_ENV === "production" ? true : false, // Secure in production
       sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
       maxAge: 15 * 60 * 1000, // 15 minutes
     });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: process.env.NODE_ENV === "production" ? true : false,
       sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
       path: "/api/v1/auth/refresh", // Security: Only send this cookie to the /refresh endpoint
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
-
 
     res.status(201).json({
       success: true,
@@ -79,14 +84,13 @@ module.exports.SignUp = async (req, res) => {
 };
 
 module.exports.Login = async (req, res) => {
+  const { email, password } = req.body;
+  //  Check if all fields are required
+  if (!email || !password) {
+    return res.status(400).json({ message: "All fields are required" });
+  }
+
   try {
-    const { email, password } = req.body;
-    //  Check if all fields are required
-    if (!email || !password) {
-      return res.status(400).json({ message: "All fields are required" });
-    }
-
-
     // 1. Find user and explicitly select password (because we set select: false in schema)
     const user = await User.findOne({ email }).select("+password");
     if (!user) {
@@ -95,7 +99,10 @@ module.exports.Login = async (req, res) => {
     }
 
     // 3. Using the method created in the Mongoose Schema
-    const isPasswordCorrect = await user.correctPassword(password, user.password);
+    const isPasswordCorrect = await user.correctPassword(
+      password,
+      user.password,
+    );
     if (!isPasswordCorrect) {
       return res.status(401).json({ message: "Invalid email or password" });
     }
@@ -107,7 +114,11 @@ module.exports.Login = async (req, res) => {
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user._id);
     // Store Refresh Token in Redis
-    await redisClient.setEx(`refresh:${user._id}`, 7 * 24 * 60 * 60, refreshToken);
+    await redisClient.setEx(
+      `refresh:${user._id}`,
+      7 * 24 * 60 * 60,
+      refreshToken,
+    );
     res.cookie("token", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -140,10 +151,13 @@ module.exports.Logout = async (req, res) => {
 
     if (refreshToken) {
       try {
-        const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET); // Just decode to get ID
+        const decoded = jwt.verify(
+          refreshToken,
+          process.env.JWT_REFRESH_SECRET,
+        ); // Just decode to get ID
         if (decoded && decoded.id) {
           await redisClient.del(`refresh:${decoded.id}`); // Kill the session in Redis
-          await redisClient.del(`user:${decoded.id}`);    // Kill the user data cache
+          await redisClient.del(`user:${decoded.id}`); // Kill the user data cache
         }
       } catch (decodeErr) {
         console.error("Token decode error during logout:", decodeErr);
@@ -152,13 +166,13 @@ module.exports.Logout = async (req, res) => {
 
     res.clearCookie("token", {
       path: "/",
-      secure: process.env.NODE_ENV === "production",
+      secure: process.env.NODE_ENV === "production" ? true : false,
       sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
     });
 
     res.clearCookie("refreshToken", {
       path: "/api/v1/auth/refresh",
-      secure: process.env.NODE_ENV === "production",
+      secure: process.env.NODE_ENV === "production" ? true : false,
       sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
     });
 
@@ -170,8 +184,8 @@ module.exports.Logout = async (req, res) => {
 
 module.exports.RefreshToken = async (req, res) => {
   const refreshToken = req.cookies.refreshToken;
-  console.log(refreshToken);
-  if (!refreshToken) return res.status(401).json({ message: "Refresh Token required" });
+  if (!refreshToken)
+    return res.status(401).json({ message: "User not verified, Login again." });
 
   try {
     // 1. Verify the token structure/signature
@@ -181,34 +195,47 @@ module.exports.RefreshToken = async (req, res) => {
     const savedToken = await redisClient.get(`refresh:${decoded.id}`);
 
     if (!savedToken || savedToken !== refreshToken) {
-      return res.status(403).json({ message: "Invalid or expired refresh token" });
+      return res
+        .status(403)
+        .json({ message: "Invalid or expired refresh token" });
     }
 
-    // 3. Get user details for the new Access Token (we need the role)
+    // 3. Get user details for the new Access Token
     let userData = await redisClient.get(`user:${decoded.id}`);
 
     if (userData) {
       userData = JSON.parse(userData);
-      // Map 'id' back to '_id' if necessary for generateAccessToken
-      if (userData.id && !userData._id) userData._id = userData.id;
     } else {
       const user = await User.findById(decoded.id);
       if (!user) return res.status(404).json({ message: "User not found" });
       userData = user;
     }
 
-    // 4. Generate a NEW Access Token
+    // 4. Generate a NEW Access Token and Refresh Token
     const newAccessToken = generateAccessToken(userData);
-
     res.cookie("token", newAccessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: process.env.NODE_ENV === "production" ? true : false,
       sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
       maxAge: 15 * 60 * 1000,
     });
 
+    const newRefreshToken = generateRefreshToken(userData);
+    await redisClient.set(`refresh:${decoded.id}`, newRefreshToken, {
+      EX: 7 * 24 * 60 * 60,
+    });
+
+    res.cookie("token", newRefreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production" ? true : false,
+      sameSite: process.env.NODE_ENV === "production" ? "NONE" : "LAX",
+      maxAge: 7 * 24 * 60 * 60,
+    });
+
     return res.status(200).json({ success: true });
   } catch (err) {
-    return res.status(403).json({ message: "Invalid Refresh Token" });
+    if (err.name === "TokenExpiredError") {
+      return res.status(401).json({ message: "Refresh token expired" });
+    }
   }
 };
