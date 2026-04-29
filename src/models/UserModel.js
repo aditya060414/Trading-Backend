@@ -5,17 +5,17 @@ const validator = require("validator");
 
 const userSchema = new Schema(
   {
-    firstName: {
-      type: String,
-      require: [true, "First name is required."],
-    },
-    middleName: {
-      type: String,
-    },
-    lastName: {
-      type: String,
-      require: [true, "First name is required."],
-    },
+    // firstName: {
+    //   type: String,
+    //   require: [true, "First name is required."],
+    // },
+    // middleName: {
+    //   type: String,
+    // },
+    // lastName: {
+    //   type: String,
+    //   require: [true, "First name is required."],
+    // },
     email: {
       type: String,
       required: [true, "Email address is required."],
