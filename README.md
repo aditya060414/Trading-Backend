@@ -142,9 +142,42 @@ this is a utility file used to generate secret tokens for users after login. Exp
 3. If user data is not availabe then hit MongoDb and store it in redis. 
 
 ### Auth
-**Routes** 
-1. login
-2. signUp
-3. verify
-4. refresh
-5. logout
+**AuthController**
+All the logic of *signUp, login, verify, refresh and logout* is defined.
+1. A helper is defined to cache session in redis, where it stores id, usernamem email and role of the user.
+2. User is stored in redis for 24hrs
+
+**Routes and Controllers** 
+
+1. signUp:
+- access and store data from the body.
+- check if all the required fields are present and if empty or null than return with error and status.
+- restrict duplicate user.
+- if user does not exist create user and cache the user in redis.
+- generate access token that will be valid for the next 30min
+- generate refresh token that will be valid for 7days and cache the user in redis for 7 days
+- set cookie
+
+2. login:
+- get data from body and verify, if it is null or empty.
+- find user and select password
+- if user does not exist return with error ("User does not exist").
+- using mongo db method check password, by passing two values password entered by the user and password stored in db.
+- if correct cache the session in redis and store the cookie, else return invalid email or password.
+
+3. verify:
+- request cookie stored on frontend, if no cookie or token return login again.
+- decode token
+- first try to get data from redis to save time in hittin request to MongoDB.
+- if data from mongoDB, store it in redis for future use.
+- return userData
+
+4. refresh:
+- check for cookie, if present proceed else return a message to login again.
+- decode the token and check for the same token in redis
+- create new Access token and Refresh token
+
+5. logout:
+- req cookie
+- if cookie present, decode it using the token and secret. Decoding is don eby inbuild fucntion of JWT(JSON Web Token).
+- kill the session in redis and also clear cookie
