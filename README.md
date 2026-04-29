@@ -181,3 +181,9 @@ All the logic of *signUp, login, verify, refresh and logout* is defined.
 - req cookie
 - if cookie present, decode it using the token and secret. Decoding is don eby inbuild fucntion of JWT(JSON Web Token).
 - kill the session in redis and also clear cookie
+
+### UserModel
+- Special use of bcrypt and validator.
+- validator: to validate email and contact number.
+- pre save, if password is modified then hash it again (when update password)
+- a method correct password is defined to check if password is correct, using ```bcrypt.compare``` to compare entered password and stored password.
