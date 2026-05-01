@@ -24,7 +24,6 @@ module.exports.getWatchlist = async (req, res) => {
         const updatedWatchlist = watchlistItems.map((item) => {
             const dbSymbol = item.symbol.trim().toUpperCase();
 
-            // Find match in cache (handling potential .NS suffix)
             const marketInfo = latestData.find(s => {
                 const cacheSym = s.symbol.trim().toUpperCase();
                 return cacheSym === dbSymbol || cacheSym === `${dbSymbol}.NS`;
