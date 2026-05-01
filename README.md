@@ -1,5 +1,30 @@
 # MarketEx :- Backend Overview
 
+## Overview
+**MarketEx** is a full-stack **trading and portfolio management platform** built using the **MERN stack, Redis, and WebSockets**, enabling real-time and scalable financial interactions.
+
+### Features  
+
+- Manage user profile and securely handle funds (deposit/withdraw)  
+- Execute **buy/sell orders** with real-time updates  
+- Analyze stocks using live data insights  
+- Maintain a personalized **watchlist**  
+- Search stocks with **low-latency, real-time communication**  
+- Track **order history**  
+- Monitor and manage **portfolio holdings**  
+
+### Performance & Scalability  
+
+MarketEx is designed for high performance and responsiveness:  
+
+- **WebSockets** enable real-time updates and seamless trading experience  
+- **Redis caching** improves data retrieval speed and reduces latency  
+- Optimized backend ensures scalable and efficient request handling 
+
+> **Note:** Market data is intraday (not real-time). A scheduled cron job fetches and persists data at a fixed time each day.
+
+---
+
 ## Installation
 
 ```bash
@@ -78,6 +103,8 @@ project-root/
 ├── wsServer.js
 ```
 
+---
+
 ## server.js
 
 ### configuration
@@ -105,6 +132,8 @@ const { fetchStock } = require('./src/controllers/PortfolioController');
 1. database connection is called first, if there is issue in connection the error is logged and server is not started.
 2. it is an asynchronous process.
 3. after database connection, stocks are fetched before server start and even if there is issue in fetching stocks, server is started and database uses previous data.
+
+---
 
 ## app.js
 
