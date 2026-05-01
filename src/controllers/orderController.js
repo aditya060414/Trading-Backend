@@ -6,6 +6,7 @@ module.exports.placeOrder = async (req, res) => {
     const { quantity, symbol, close, mode } = req.body;
     const email = req.user.email;
     const userId = req.user.id;
+    
     // 1. Validation
     const cleanedMode = mode.replace(/[{}]/g, "");
 
