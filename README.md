@@ -64,155 +64,158 @@ project-root/
 ├── package-lock.json
 ├── README.md
 ├── src/
-    ├── config/
-        ├── db.js
-        ├── redis.js
-    ├── constants/
-        ├── orderConstants.js
-    ├── controllers/
-        ├── AuthController.js
-        ├── fundsController.js
-        ├── orderController.js
-        ├── PortfolioController.js
-        ├── watchlistController.js
-    ├── middlewares/
-        ├── AuthMiddleWare.js
-    ├── modules/
-        ├── FundsModel.js
-        ├── HoldingsModel.js
-        ├── OrdersHistoryModel.js
-        ├── UserModel.js
-        ├── WatchlistModel.js
-    ├── routes/
-        ├── AuthRoute.js
-        ├── FundRoute.js
-        ├── Home.js
-        ├── OrderRoute.js
-        ├── PortfolioRoute.js
-        ├── WatchlistRoute.js
-    ├── schems/
-        ├── HoldingsSchema.js
-        ├── OrdersHistorySchema.js
-        ├── WatchlistSchema.js
-    ├── services/
-        ├── orderServices.js
-    ├── utils
-        ├── SecretToken.js
+│   ├── config/
+│   │   ├── db.js
+│   │   └── redis.js
+│   ├── constants/
+│   │   └── orderConstants.js
+│   ├── controllers/
+│   │   ├── AuthController.js
+│   │   ├── fundsController.js
+│   │   ├── orderController.js
+│   │   ├── PortfolioController.js
+│   │   └── watchlistController.js
+│   ├── middlewares/
+│   │   └── AuthMiddleWare.js
+│   ├── modules/
+│   │   ├── FundsModel.js
+│   │   ├── HoldingsModel.js
+│   │   ├── OrdersHistoryModel.js
+│   │   ├── UserModel.js
+│   │   └── WatchlistModel.js
+│   ├── routes/
+│   │   ├── AuthRoute.js
+│   │   ├── FundRoute.js
+│   │   ├── Home.js
+│   │   ├── OrderRoute.js
+│   │   ├── PortfolioRoute.js
+│   │   └── WatchlistRoute.js
+│   ├── schems/
+│   │   ├── HoldingsSchema.js
+│   │   ├── OrdersHistorySchema.js
+│   │   └── WatchlistSchema.js
+│   ├── services/
+│   │   └── orderServices.js
+│   └── utils/
+│       └── SecretToken.js
 ├── app.js
 ├── server.js
-├── wsServer.js
+└── wsServer.js
 ```
 
 ---
 
-## server.js
+## `server.js`
 
-### configuration
+### Configuration
 
-````javascript
+```javascript
 require("dotenv").config();
 process.env.VARIABLE_NAME 
-**this is used to load environment variables from a `.env` file into node.js app.**
 ```
+> **This is used to load environment variables from a `.env` file into the Node.js app.**
 
-### database connection
-````javascript
+### Database Connection
+```javascript
 connectDB()
-**a database connection call is sent to the mongoose, with the required `url` from .env file.**
-````
+```
+> **A database connection call is sent to Mongoose, with the required `url` from the `.env` file.**
 
-###
-````javascript
+### App Initialization
+```javascript
 const app = require('./app'); 
 const { fetchStock } = require('./src/controllers/PortfolioController');
-**`app` is the instance of express, which initializes server, returns express application and also app is used to define routes,middleware,.etc.**
-````
+```
+> **`app` is the instance of Express, which initializes the server, returns the Express application, and is also used to define routes, middlewares, etc.**
 
-### database connection and start server
-1. database connection is called first, if there is issue in connection the error is logged and server is not started.
-2. it is an asynchronous process.
-3. after database connection, stocks are fetched before server start and even if there is issue in fetching stocks, server is started and database uses previous data.
+### Database Connection and Start Server
+1. Database connection is called first. If there is an issue in connection, the error is logged and the server is not started.
+2. It is an asynchronous process.
+3. After database connection, stocks are fetched before the server starts and even if there is an issue in fetching stocks, the server is started and the database uses previous data.
 
 ---
 
-## app.js
+## `app.js`
 
-### use cors
- a custom cors is used to allow requests form specific sites and handle requests coming from unknown or restricted sites.
- **Methods** are defined to make sure only this methods are allowed to interact with backend.
- **Credenctials** are set to true to allow cookies to be sent from frontend and receive at backend to make sure it is a valid a user, middlewares are defiend to handle these requests.
+### Use CORS
+A custom CORS is used to allow requests from specific sites and handle requests coming from unknown or restricted sites.
+- **Methods:** Are defined to make sure only these methods are allowed to interact with the backend.
+- **Credentials:** Are set to `true` to allow cookies to be sent from the frontend and received at the backend to make sure it is a valid user, middlewares are defined to handle these requests.
 
- ### rate limiting
-**globalLimiter** function is used to rate limit, if a server receives too many request from a single ip address it blocks the request for 15 minutes. Prevents from brute force attacks.
-**authLimiter** if a user to tries to login/signup or verify and reaches max attempt, user will be blocked for 15 minutes.
-**sensitiveLimiter** this is little relaxed version of rate limiting, it is used for routes which are not that sensitive but still need to be rate limited, so that server is not crashed with too many requests.
+### Rate Limiting
+- **`globalLimiter`:** Function is used to rate limit. If a server receives too many requests from a single IP address it blocks the request for 15 minutes. Prevents brute force attacks.
+- **`authLimiter`:** If a user tries to login/signup or verify and reaches max attempts, the user will be blocked for 15 minutes.
+- **`sensitiveLimiter`:** This is a slightly relaxed version of rate limiting. It is used for routes which are not that sensitive but still need to be rate limited, so that the server does not crash with too many requests.
 
-### error handling
-1. if route does not exist send 404 error
-2. if there is any error in the backend send error message and stack trace (only in development level), in production level send only error message.
+### Error Handling
+1. If the route does not exist, send a `404` error.
+2. If there is any error in the backend, send an error message and stack trace (only in development level). In production level, send only the error message.
+
+---
 
 ## Authentication and Authorization
 
-### SecretToken.js
-this is a utility file used to generate secret tokens for users after login. Exports two functions
-1. generateAccessToken:- return jwt sign with id,role,JWT secret,issuer and expiry.
-2. generateRefreshToken:- return jwt sign with id,JWT refresh secret,issuer and expiry.
+### `SecretToken.js`
+This is a utility file used to generate secret tokens for users after login. Exports two functions:
+1. `generateAccessToken`: Returns JWT sign with id, role, JWT secret, issuer, and expiry.
+2. `generateRefreshToken`: Returns JWT sign with id, JWT refresh secret, issuer, and expiry.
 
 ### JSON Web Token
-**Structure** three base64Url encoded strings seperated by dots. Mainly used in *Authorozation* and *Authentication* after login.
+**Structure:** Three base64Url encoded strings separated by dots. Mainly used in *Authorization* and *Authentication* after login.
 1. Header
 2. Payload
 3. Signature 
 
-### AuthMiddleWare
-**Technology Used**:- export of JWT from utility, Redis, and MongoDb.
-1. Use of JWT to get signed token which includes header, payload and signature.'
-2. Redis used to increase speed of login system without hitting mongoDB every time, if the user is present in redis return user data by `redisClient.get` and if not in redis, fetch from MongoDB and store in redis by `redisClient.setEx` after a particular set of time user data will be deleted from redis.
-3. If user data is not availabe then hit MongoDb and store it in redis. 
+### `AuthMiddleWare`
+**Technology Used:** Export of JWT from utility, Redis, and MongoDB.
+1. Use of JWT to get a signed token which includes header, payload, and signature.
+2. Redis is used to increase the speed of the login system without hitting MongoDB every time. If the user is present in Redis, return user data by `redisClient.get` and if not in Redis, fetch from MongoDB and store in Redis by `redisClient.setEx`. After a particular set of time, user data will be deleted from Redis.
+3. If user data is not available, then hit MongoDB and store it in Redis. 
 
 ### Auth
-**AuthController**
-All the logic of *signUp, login, verify, refresh and logout* is defined.
-1. A helper is defined to cache session in redis, where it stores id, usernamem email and role of the user.
-2. User is stored in redis for 24hrs
 
-**Routes and Controllers** 
+#### `AuthController`
+All the logic of *signUp, login, verify, refresh, and logout* is defined.
+1. A helper is defined to cache the session in Redis, where it stores `id`, `username`, `email`, and `role` of the user.
+2. User is stored in Redis for 24 hours.
 
-1. signUp:
-- access and store data from the body.
-- check if all the required fields are present and if empty or null than return with error and status.
-- restrict duplicate user.
-- if user does not exist create user and cache the user in redis.
-- generate access token that will be valid for the next 30min
-- generate refresh token that will be valid for 7days and cache the user in redis for 7 days
-- set cookie
+#### Routes and Controllers 
 
-2. login:
-- get data from body and verify, if it is null or empty.
-- find user and select password
-- if user does not exist return with error ("User does not exist").
-- using mongo db method check password, by passing two values password entered by the user and password stored in db.
-- if correct cache the session in redis and store the cookie, else return invalid email or password.
+**1. signUp:**
+- Access and store data from the body.
+- Check if all the required fields are present and if empty or null, then return with error and status.
+- Restrict duplicate user.
+- If the user does not exist, create the user and cache the user in Redis.
+- Generate an access token that will be valid for the next 30 minutes.
+- Generate a refresh token that will be valid for 7 days and cache the user in Redis for 7 days.
+- Set cookie.
 
-3. verify:
-- request cookie stored on frontend, if no cookie or token return login again.
-- decode token
-- first try to get data from redis to save time in hittin request to MongoDB.
-- if data from mongoDB, store it in redis for future use.
-- return userData
+**2. login:**
+- Get data from the body and verify if it is null or empty.
+- Find user and select password.
+- If the user does not exist, return with error ("User does not exist").
+- Using MongoDB method, check password by passing two values: password entered by the user and password stored in the DB.
+- If correct, cache the session in Redis and store the cookie, else return invalid email or password.
 
-4. refresh:
-- check for cookie, if present proceed else return a message to login again.
-- decode the token and check for the same token in redis
-- create new Access token and Refresh token
+**3. verify:**
+- Request cookie stored on the frontend. If there is no cookie or token, return to login again.
+- Decode token.
+- First, try to get data from Redis to save time in hitting request to MongoDB.
+- If data from MongoDB, store it in Redis for future use.
+- Return `userData`.
 
-5. logout:
-- req cookie
-- if cookie present, decode it using the token and secret. Decoding is don eby inbuild fucntion of JWT(JSON Web Token).
-- kill the session in redis and also clear cookie
+**4. refresh:**
+- Check for cookie. If present proceed, else return a message to login again.
+- Decode the token and check for the same token in Redis.
+- Create new Access token and Refresh token.
 
-### UserModel
-- Special use of bcrypt and validator.
-- validator: to validate email and contact number.
-- pre save, if password is modified then hash it again (when update password)
-- a method correct password is defined to check if password is correct, using ```bcrypt.compare``` to compare entered password and stored password.
+**5. logout:**
+- Request cookie.
+- If cookie present, decode it using the token and secret. Decoding is done by inbuilt function of JWT (JSON Web Token).
+- Kill the session in Redis and also clear the cookie.
+
+### `UserModel`
+- Special use of `bcrypt` and `validator`.
+- `validator`: To validate email and contact number.
+- `pre('save')`: If password is modified then hash it again (when updating password).
+- A method `correctPassword` is defined to check if the password is correct, using `bcrypt.compare` to compare the entered password and stored password.
