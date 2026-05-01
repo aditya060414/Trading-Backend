@@ -15,7 +15,7 @@ const connectDB = async () => {
     console.log("MongoDB Connected Successfully");
   } catch (err) {
     // if connection fails, then error is logged and process is exited
-    console.error("MongoDB connection error:", err.message);
+    console.error("MongoDB connection error:", err);
     // when connection fails then nothing is fetched from database, so instead of showing broken server kill the process completely
     process.exit(1);
   }
